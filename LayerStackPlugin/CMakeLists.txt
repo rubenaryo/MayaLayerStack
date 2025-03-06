@@ -25,7 +25,7 @@ file(GLOB_RECURSE SRC_PY
 )
 
 set(UI_ENTRY_SCRIPT_NAME layer_stack_ui.py)
-set(UI_ENTRY_SCRIPT_PATH src/Python)
+set(UI_ENTRY_SCRIPT_PATH "${PROJECT_SOURCE_DIR}/src/Python")
 
 find_package(Maya REQUIRED)
 
@@ -45,13 +45,13 @@ install(TARGETS ${PROJECT_NAME} ${MAYA_TARGET_TYPE} DESTINATION plug-ins/${MAYA_
 add_custom_command(TARGET LayerStackPlugin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy 
     "$<TARGET_FILE:LayerStackPlugin>"
-    "${LAYERSTACK_PLUGIN_PATH}/$<TARGET_FILE_NAME:LayerStackPlugin>"
+    "${MAYA_PLUGIN_PATH}/$<TARGET_FILE_NAME:LayerStackPlugin>"
     COMMENT "Copying MLL to Maya Devkit folder"
 )
 
 add_custom_command(TARGET LayerStackPlugin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy 
     "${UI_ENTRY_SCRIPT_PATH}/${UI_ENTRY_SCRIPT_NAME}"
-    "${LAYERSTACK_PLUGIN_PATH}/${UI_ENTRY_SCRIPT_NAME}"
+    "${MAYA_SCRIPT_PATH}/${UI_ENTRY_SCRIPT_NAME}"
     COMMENT "Copying Python UI Script to Maya Devkit folder"
 )

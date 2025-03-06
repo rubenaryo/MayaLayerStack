@@ -58,7 +58,8 @@ MStatus initializePlugin( MObject obj )
     }
 
     // Load python scripts
-    MString pluginPath = plugin.loadPath();
+    MString pluginPath = plugin.loadPath() + "/../scripts";
+
     MString command = "import sys\n"
         "plugin_path = r'" + pluginPath + "'\n"
         "if plugin_path not in sys.path:\n"
