@@ -10,6 +10,7 @@ public:
     LayerStackCmd();
     virtual ~LayerStackCmd();
     static void* creator() { return new LayerStackCmd(); }
+    static const char* name() { return "LayerStackCmd"; }
     MStatus doIt( const MArgList& args );
 };
 
