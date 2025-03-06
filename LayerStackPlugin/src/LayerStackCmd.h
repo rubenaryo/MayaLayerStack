@@ -4,12 +4,12 @@
 #include <maya/MPxCommand.h>
 #include <string>
 
-class LSystemCmd : public MPxCommand
+class LayerStackCmd : public MPxCommand
 {
 public:
-    LSystemCmd();
-    virtual ~LSystemCmd();
-    static void* creator() { return new LSystemCmd(); }
+    LayerStackCmd();
+    virtual ~LayerStackCmd();
+    static void* creator() { return new LayerStackCmd(); }
     MStatus doIt( const MArgList& args );
 };
 

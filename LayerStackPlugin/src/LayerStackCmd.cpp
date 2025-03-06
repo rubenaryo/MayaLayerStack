@@ -3,22 +3,22 @@
 
 #include <maya/MGlobal.h>
 #include <list>
-LSystemCmd::LSystemCmd() : MPxCommand()
+LayerStackCmd::LayerStackCmd() : MPxCommand()
 {
 }
 
-LSystemCmd::~LSystemCmd() 
+LayerStackCmd::~LayerStackCmd() 
 {
 }
 
-MStatus LSystemCmd::doIt( const MArgList& args )
+MStatus LayerStackCmd::doIt( const MArgList& args )
 {
 	// message in Maya output window
-    cout<<"Implement Me!"<<endl;
+    cout << "Hello World" <<endl;
 	std::cout.flush();
 
 	// message in scriptor editor
-	MGlobal::displayInfo("Implement Me!");
+	MGlobal::displayInfo("Hello World");
 
     return MStatus::kSuccess;
 }
