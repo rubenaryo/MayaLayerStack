@@ -38,6 +38,11 @@ void removeMenuItem()
 {
     // Remove any existing menu
     MGlobal::executePythonCommand("if cmds.menu('" LAYERSTACK_MENU_STR "', exists=True): cmds.deleteUI('" LAYERSTACK_MENU_STR "')");
+
+    // Destroy open windows
+    MGlobal::executePythonCommand(
+        "import layer_stack_ui\n"
+        "layer_stack_ui.cleanup_ui()");
 }
 
 MStatus initializePlugin( MObject obj )

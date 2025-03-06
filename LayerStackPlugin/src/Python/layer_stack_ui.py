@@ -6,7 +6,7 @@ def create_ui():
         cmds.deleteUI("meshSelectionUI")
     
     # Create the main window
-    window = cmds.window("meshSelectionUI", title="Mesh Selection Tool", width=300, height=200)
+    window = cmds.window("meshSelectionUI", title="Layer Material Controls", width=300, height=200)
     
     # Create the main layout
     main_layout = cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 5), rowSpacing=10, columnWidth=300)
@@ -17,9 +17,6 @@ def create_ui():
     
     # Create a button to select mesh
     cmds.button(label="Select Mesh", command=select_mesh)
-    
-    # Add some spacing
-    cmds.separator(height=20)
     
     # Create an "Apply" button at the bottom
     cmds.button(label="Apply", command=apply_function)
@@ -57,3 +54,8 @@ def apply_function(*args):
         cmds.confirmDialog(title="Success", message=f"Applied to {selected_mesh}", button=["OK"])
     else:
         cmds.warning("No mesh selected. Please select a mesh first.")
+
+def cleanup_ui():
+    # Check if the window already exists, if so, delete it
+    if cmds.window("meshSelectionUI", exists=True):
+        cmds.deleteUI("meshSelectionUI")
