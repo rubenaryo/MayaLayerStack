@@ -2,11 +2,15 @@ cmake_minimum_required(VERSION 3.18)
 
 project(LayerStack)
 
-set(MAYA_LOCATION "C:/Program Files/Autodesk/Maya2024")
-set(MAYA_PLUGIN_PATH "C:/Users/Ruben/devkitBase/plug-ins/plug-ins")
+set(MAYA_LOCATION "$ENV{MAYA_LOCATION}")
+set(MAYA_PLUGIN_PATH "$ENV{DEVKIT_LOCATION}/plug-ins/plug-ins")
 
 if (NOT EXISTS "${MAYA_LOCATION}")
-  message(FATAL_ERROR "Maya not found at ${MAYA_LOCATION}, please set MAYA_LOCATION to the correct path!!!")
+  message(FATAL_ERROR "Maya not found at ${MAYA_LOCATION}, please ensure your MAYA_LOCATION environment variable is set.")
+endif()
+
+if (NOT EXISTS "${MAYA_PLUGIN_PATH}")
+  message(FATAL_ERROR "Maya plugin path not found at ${MAYA_PLUGIN_PATH}, please ensure your DEVKIT_LOCATION environment variable is set.")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
