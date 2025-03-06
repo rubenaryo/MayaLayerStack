@@ -33,3 +33,10 @@ target_include_directories(${PROJECT_NAME}
 MAYA_PLUGIN(${PROJECT_NAME})
 
 install(TARGETS ${PROJECT_NAME} ${MAYA_TARGET_TYPE} DESTINATION plug-ins/${MAYA_VERSION})
+
+add_custom_command(TARGET LayerStackPlugin POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy 
+    "$<TARGET_FILE:LayerStackPlugin>"
+    "${MAYA_DEVKIT_PATH}/$<TARGET_FILE_NAME:LayerStackPlugin>.mll"
+    COMMENT "Copying MLL to Maya Devkit folder"
+)
