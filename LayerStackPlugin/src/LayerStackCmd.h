@@ -10,7 +10,7 @@ public:
     LayerStackCmd();
     virtual ~LayerStackCmd();
     static void* creator() { return new LayerStackCmd(); }
-    static const char* name() { return "LayerStackCmd"; }
+    static const char* name() { return "applyMultiLayerMaterial"; }
     MStatus doIt( const MArgList& args );
 };
 

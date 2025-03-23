@@ -1,4 +1,5 @@
 import maya.cmds as cmds
+import maya.mel as mel
 
 def create_ui():
     # Check if the window already exists, if so, delete it
@@ -48,10 +49,13 @@ def apply_function(*args):
     if selected_mesh:
         # Do something with the selected mesh
         print(f"Applying function to mesh: {selected_mesh}")
-        # Add your custom operations here
-        
-        # Example: Display a confirmation message
-        cmds.confirmDialog(title="Success", message=f"Applied to {selected_mesh}", button=["OK"])
+
+        try:
+            cmds.applyMultiLayerMaterial(selected_mesh)
+            cmds.confirmDialog(title="Success", message=f"Applied to {selected_mesh}", button=["OK"])
+        except Exception as e:
+            cmds.error("Error applying material: {}".format(str(e)))
+
     else:
         cmds.warning("No mesh selected. Please select a mesh first.")
 
