@@ -1,20 +1,7 @@
 #include <maya/MPxCommand.h>
 #include <maya/MFnPlugin.h>
-#include <maya/MIOStream.h>
 #include <maya/MString.h>
-#include <maya/MArgList.h>
 #include <maya/MGlobal.h>
-#include <maya/MSimple.h>
-#include <maya/MDoubleArray.h>
-#include <maya/MPoint.h>
-#include <maya/MPointArray.h>
-#include <maya/MFnNurbsCurve.h>
-#include <maya/MDGModifier.h>
-#include <maya/MPlugArray.h>
-#include <maya/MVector.h>
-#include <maya/MFnDependencyNode.h>
-#include <maya/MStringArray.h>
-#include <list>
 
 #include "LayerStackCmd.h"
 
