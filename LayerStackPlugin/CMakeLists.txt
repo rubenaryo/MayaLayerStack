@@ -40,6 +40,15 @@ target_include_directories(${PROJECT_NAME}
 )
 MAYA_PLUGIN(${PROJECT_NAME})
 
+# Arnold linker inputs and includes
+target_link_libraries(${PROJECT_NAME}
+	PRIVATE $ENV{DEVKIT_LOCATION}/ArnoldSDK/lib/ai.lib
+)
+
+target_include_directories(${PROJECT_NAME} 
+	PRIVATE $ENV{DEVKIT_LOCATION}/ArnoldSDK/include
+)
+
 install(TARGETS ${PROJECT_NAME} ${MAYA_TARGET_TYPE} DESTINATION plug-ins/${MAYA_VERSION})
 
 add_custom_command(TARGET LayerStackPlugin POST_BUILD
