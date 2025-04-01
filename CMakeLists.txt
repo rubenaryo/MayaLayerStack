@@ -30,5 +30,6 @@ set(VS_SOLUTION_PATH "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln" CACHE INTERNAL "P
 set_property(GLOBAL PROPERTY VS_SOLUTION_FILE ${VS_SOLUTION_PATH})
 
 add_subdirectory(LayerStackPlugin)
+add_subdirectory(ArnoldPlugin)
 
 

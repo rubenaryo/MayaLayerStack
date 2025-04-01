@@ -1,4 +1,5 @@
 #include "LayerStackCmd.h"
+#include "ArnoldUtils.h"
 
 #include <maya/MArgList.h>
 #include <maya/MFnMesh.h>
@@ -70,18 +71,44 @@ MStatus CreateBlinnMaterial(MObject& out_materialObj)
     // TODO: Load custom arnold material.
     MStatus status;
 
-    MDGModifier dgModifier;
-    MObject shaderObj = dgModifier.createNode("blinn", &status);
+    MObject shaderObj;
 
-    status = dgModifier.doIt();
-    LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to create material");
+    static bool USE_CPP = false;
+    if (USE_CPP)
+    {
+        MDGModifier dgModifier;
+        //shaderObj = dgModifier.createNode("simpleShader", &status);
+        shaderObj = dgModifier.createNode("aiLayerstack", &status);
 
-    MFnDependencyNode shaderFn(shaderObj);
-    MString name = shaderFn.setName(LAYER_STACK_MATERIAL_NAME, false, &status);
-    LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to rename material");
+        status = dgModifier.doIt();
+        LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to create material");
+    }
+    else
+    {
+        // Create the custom shader node using MEL
+        MString createShaderCmd = "createNode mlsLayeredSurface -n " + LAYER_STACK_MATERIAL_NAME;
+        MGlobal::displayInfo("Executing command: " + createShaderCmd);
+        status = MGlobal::executeCommand(createShaderCmd);
+        if (!status) {
+            MGlobal::displayError("Failed to create custom shader node");
+            return status;
+        }
+
+        MObject result;
+        MSelectionList selList;
+        selList.add(LAYER_STACK_MATERIAL_NAME);
+        status = selList.getDependNode(0, result);
+        LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to find shader node for query: mySimpleShader");
+
+        shaderObj = result;
+    }
+
+    //MFnDependencyNode shaderFn(shaderObj);
+    //MString name = shaderFn.setName(LAYER_STACK_MATERIAL_NAME, false, &status);
+    //LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to rename material");
 
     // Set the color to red
-    status = MGlobal::executeCommand("setAttr \"" + LAYER_STACK_MATERIAL_NAME + ".color\" -type double3 1.0 0 0.0 ;;");
+    //status = MGlobal::executeCommand("setAttr \"" + LAYER_STACK_MATERIAL_NAME + ".color\" -type double3 1.0 0 0.0 ;;");
 
     out_materialObj = shaderObj;
     return status;
@@ -139,9 +166,9 @@ MStatus GetLayerStackMaterialAndShadingGroup(MObject& out_materialObj, MObject& 
     }
     
     MObject shadingGroupObj;
-    selList.clear();
-    selList.add(LAYER_STACK_GROUP_NAME);
-    status = selList.getDependNode(0, shadingGroupObj);
+    MSelectionList sgSelList;
+    sgSelList.add(LAYER_STACK_GROUP_NAME);
+    status = sgSelList.getDependNode(0, shadingGroupObj);
     if (status != MStatus::kSuccess) {
         MGlobal::displayInfo("Did not find existing layer stack shading group " + LAYER_STACK_GROUP_NAME + ". Creating it now...");
 
@@ -233,7 +260,11 @@ MStatus LayerStackCmd::doIt( const MArgList& args )
     // Look up the shape node from the name
     MObject shapeNode;
     status = GetShapeNodeFromSelection(selectedStr, shapeNode);
+    LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to fetch shape node from selection: " + selectedStr);
 
+    // Load custom arnold shader
+    MString arnoldShaderPath = "C:/Users/Ruben/Code/CIS6600/AuthoringTool/MayaLayerStack/ArnoldPlugin/x64/Debug/ArnoldPlugin.dll";
+    
     MFnMesh meshFn(shapeNode);
 
     MObject blinnObj;

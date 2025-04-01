@@ -1,0 +1,50 @@
+# layerstack                    0x00070000
+
+[node layerstack]
+    maya.name               STRING  "mlsLayeredSurface"
+    maya.id                 INT      0x00070000
+    maya.classification     STRING  "shader/surface"
+    maya.output_name        STRING  "outColor"
+    maya.output_shortname   STRING  "out"
+
+    [attr albedo_0]
+        maya.name           STRING  "albedo 0" 
+    
+    [attr eta_0]
+		min					FLOAT	0.1
+		max					FLOAT	5.0
+		default				FLOAT	1.5
+		maya.name			STRING	"eta 0"
+
+    [attr kappa_0]
+		min					FLOAT	0.0
+		max					FLOAT	5.0
+		default				FLOAT	0.0
+		maya.name			STRING	"kappa 0"
+
+    [attr alpha_0]
+		min					FLOAT	0.001
+		max					FLOAT	1.0
+		default				FLOAT	0.001
+		maya.name			STRING	"alpha 0"
+
+    [attr albedo_1]
+        maya.name           STRING  "albedo 1" 
+    
+    [attr eta_1]
+		min					FLOAT	0.1
+		max					FLOAT	5.0
+		default				FLOAT	0.47
+		maya.name			STRING	"eta 1"
+
+    [attr kappa_1]
+		min					FLOAT	0.0
+		max					FLOAT	5.0
+		default				FLOAT	2.9
+		maya.name			STRING	"kappa 1"
+
+    [attr alpha_1]
+		min					FLOAT	0.001
+		max					FLOAT	1.0
+		default				FLOAT	0.2
+		maya.name			STRING	"alpha 1"
