@@ -1,50 +1,102 @@
-# layerstack                    0x00070000
-
 [node layerstack]
     maya.name               STRING  "mlsLayeredSurface"
-    maya.id                 INT      0x00070000
+    maya.id                 INT      0x00114514
     maya.classification     STRING  "shader/surface"
     maya.output_name        STRING  "outColor"
     maya.output_shortname   STRING  "out"
 
-    [attr albedo_0]
-        maya.name           STRING  "albedo 0" 
+    [attr param]
+        maya.name           STRING  "param" 
+		maya.keyable        BOOL    true
     
-    [attr eta_0]
-		min					FLOAT	0.1
-		max					FLOAT	5.0
-		default				FLOAT	1.5
-		maya.name			STRING	"eta 0"
 
-    [attr kappa_0]
-		min					FLOAT	0.0
-		max					FLOAT	5.0
-		default				FLOAT	0.0
-		maya.name			STRING	"kappa 0"
+[node layerstack_add]
+    maya.name               STRING  "mlsLayerAdd"
+    maya.id                 INT      0x00114515
+    maya.classification     STRING  "utility/math"
+    maya.swatch             BOOL    true
+	maya.output_name        STRING  "outParam"
+    maya.output_shortname   STRING  "out"
 
-    [attr alpha_0]
-		min					FLOAT	0.001
-		max					FLOAT	1.0
-		default				FLOAT	0.001
-		maya.name			STRING	"alpha 0"
+    [attr top]
+        maya.name           STRING  "top" 
+		maya.keyable        BOOL    true
 
-    [attr albedo_1]
-        maya.name           STRING  "albedo 1" 
+	[attr bottom]
+        maya.name           STRING  "bottom" 
+		maya.keyable        BOOL    true
+
+[node layerstack_metal]
+    maya.name               STRING  "mlsLayerMetal"
+    maya.id                 INT      0x00114516
+    maya.classification     STRING  "utility/math"
+    maya.swatch             BOOL    true
+	maya.output_name        STRING  "outParam"
+    maya.output_shortname   STRING  "out"
+
+    [attr albedo]
+        maya.name           STRING  "albedo" 
+		maya.keyable        BOOL    true
     
-    [attr eta_1]
+    [attr IOR]
 		min					FLOAT	0.1
 		max					FLOAT	5.0
 		default				FLOAT	0.47
-		maya.name			STRING	"eta 1"
+		maya.name			STRING	"IOR"
+		maya.keyable        BOOL    true
 
-    [attr kappa_1]
-		min					FLOAT	0.0
+    [attr kappa]
+		min					FLOAT	0.01
 		max					FLOAT	5.0
 		default				FLOAT	2.9
-		maya.name			STRING	"kappa 1"
+		maya.name			STRING	"kappa"
+		maya.keyable        BOOL    true
 
-    [attr alpha_1]
+    [attr roughness]
 		min					FLOAT	0.001
 		max					FLOAT	1.0
 		default				FLOAT	0.2
-		maya.name			STRING	"alpha 1"
+		maya.name			STRING	"roughness"
+		maya.keyable        BOOL    true
+
+[node layerstack_dielectric]
+    maya.name               STRING  "mlsLayerDielectric"
+    maya.id                 INT      0x00114517
+    maya.classification     STRING  "utility/math"
+    maya.swatch             BOOL    true
+	maya.output_name        STRING  "outParam"
+    maya.output_shortname   STRING  "out"
+    
+    [attr IOR]
+		min					FLOAT	0.1
+		max					FLOAT	5.0
+		default				FLOAT	1.5
+		maya.name			STRING	"IOR"
+		maya.keyable        BOOL    true
+
+    [attr roughness]
+		min					FLOAT	0.001
+		max					FLOAT	1.0
+		default				FLOAT	0.01
+		maya.name			STRING	"roughness"
+		maya.keyable        BOOL    true
+
+[node layerstack_volumetric]
+    maya.name               STRING  "mlsLayerVolumetric"
+    maya.id                 INT      0x00114518
+    maya.classification     STRING  "utility/math"
+    maya.swatch             BOOL    true
+	maya.output_name        STRING  "outParam"
+    maya.output_shortname   STRING  "out"
+    
+    [attr albedo]
+        maya.name           STRING  "albedo" 
+		maya.keyable        BOOL    true
+
+    [attr depth]
+		min					FLOAT	0.001
+		max					FLOAT	0.1
+		default				FLOAT	0.01
+		maya.name			STRING	"depth"
+		maya.keyable        BOOL    true
+    

@@ -39,11 +39,15 @@ bsdf_sample
         return AI_BSDF_LOBE_MASK_NONE;
 
     // compute coeffs and alphas using adding-doubling
-    AtRGB coeffs[2];
-    float alphas[2];
+    AtRGB coeffs[3];
+    float alphas[3];
     int nb_valid = 0;
-    computeAddingDoubling(cosNO, 2, data->albedos, data->etas, data->kappas, data->alphas,
+    computeAddingDoubling(cosNO, data->albedos.size(), data->albedos, data->etas, data->kappas, data->alphas, data->depths, data->sigma_a, data->sigma_s,
         coeffs, alphas, nb_valid);
+
+    if (nb_valid == 0) {
+        return AI_BSDF_LOBE_MASK_NONE;
+    }
 
     /* Convert Spectral coefficients to floats to select BRDF lobe to sample */
     std::vector<float> weights(nb_valid);
@@ -86,14 +90,13 @@ bsdf_sample
         const float G = geometrySmith(cosNI, cosNO, a);
         const float G1 = smithShlickGGX(cosNI, a);
 
-        // f
         if (!AiColorIsSmall(coeffs[i])) {
+            // f
             f += D * G * coeffs[i] / (4.0f * cosNO);
+            // pdf
+            float DG1 = D * G1 / (4.0f * cosNO);
+            pdf += (weights[i] / cum_w) * DG1;
         }
-
-        // pdf
-        float DG1 = D * G1 / (4.0f * cosNO);
-        pdf += (weights[i] / cum_w) * DG1;
     }
 
     if (pdf <= 0.0f) {
@@ -133,11 +136,15 @@ bsdf_eval
     float cum_w = 0.0;
 
     // compute coeffs and alphas using adding-doubling
-    AtRGB coeffs[2];
-    float alphas[2];
+    AtRGB coeffs[3];
+    float alphas[3];
     int nb_valid = 0;
-    computeAddingDoubling(cosNO, 2, data->albedos, data->etas, data->kappas, data->alphas,
+    computeAddingDoubling(cosNO, data->albedos.size(), data->albedos, data->etas, data->kappas, data->alphas, data->depths, data->sigma_a, data->sigma_s,
         coeffs, alphas, nb_valid);
+
+    if (nb_valid == 0) {
+        return AI_BSDF_LOBE_MASK_NONE;
+    }
 
     /* Sum the contribution of all the interfaces */
     for (int i = 0; i < nb_valid; ++i) {

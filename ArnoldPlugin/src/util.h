@@ -53,6 +53,10 @@ inline AtBSDFLobeMask LobeMask(int idx) {
     return 1 << idx;
 }
 
+inline AtRGB AiRGBExp(const AtRGB& c) {
+	return AtRGB(expf(c.r), expf(c.g), expf(c.b));
+}
+
 inline float roughnessToVariance(float a) {
 #ifdef USE_BEST_FIT
     a = _clamp<float>(a, 0.0, 0.9999);
@@ -69,6 +73,12 @@ inline float varianceToRoughness(float v) {
 #else
     return v / (1.0f + v);
 #endif
+}
+
+inline void computeSigma(AtRGB albedo, float ld, AtRGB& sigma_a, AtRGB& sigma_s) {
+	AtRGB sigma_t = AtRGB(1 / ld);
+	sigma_s = albedo * sigma_t;
+	sigma_a = sigma_t - sigma_s;
 }
 
 struct Vec2c

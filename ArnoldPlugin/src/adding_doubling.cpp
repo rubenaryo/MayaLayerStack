@@ -164,6 +164,9 @@ void computeAddingDoubling(
     const std::vector<float>& m_etas,
     const std::vector<float>& m_kappas,
     const std::vector<float>& m_alphas,
+    const std::vector<float>& m_depths,
+    const std::vector<AtRGB>& m_sigma_a,
+    const std::vector<AtRGB>& m_sigma_s,
     AtRGB* coeffs,
     float* alphas, 
     int &nb_valid) {
@@ -185,25 +188,27 @@ void computeAddingDoubling(
         float kappa = kappa_2 / eta_1;
         float alpha = m_alphas[i];
         float n12 = eta;
-        // float depth = m_depths[i];
-        float depth = 0.0f;
+        float depth = m_depths[i];
+        //float depth = 0.0f;
 
         AtRGB R12, T12, R21, T21;
         float s_r12 = 0.0f, s_r21 = 0.0f, s_t12 = 0.0f, s_t21 = 0.0f, j12 = 1.0f, j21 = 1.0f, ctt;
         if (depth > 0.0f) {
-            ///* Mean doesn't change with volumes */
-            //ctt = cti;
+            /* Mean doesn't change with volumes */
+            ctt = cti;
 
-            ///* Evaluate transmittance */
-            //const Spectrum sigma_t = m_sigma_a[i] + m_sigma_s[i];
-            //T12 = (Spectrum(1.0f) + m_sigma_s[i] * depth / ctt) * (-(depth / ctt) * sigma_t).exp();
-            //T21 = T12;
-            //R12 = Spectrum(0.0f);
-            //R21 = Spectrum(0.0f);
+            /* Evaluate transmittance */
+            const AtRGB sigma_t = m_sigma_a[i] + m_sigma_s[i];
+            T12 = (AtRGB(1.0f) + m_sigma_s[i] * depth / ctt) * AiRGBExp(-(depth / ctt) * sigma_t);
+            //T12 = (AtRGB(1.0f) + AtRGB(100.0F) * 0.001f / ctt) * AiRGBExp(-(0.001F / ctt) * AtRGB(100.F));
+            //T12 = AtRGB(1.0f);
+            T21 = T12;
+            R12 = AtRGB(0.0f);
+            R21 = AtRGB(0.0f);
 
-            ///* Fetch precomputed variance for HG phase function */
-            //s_t12 = alpha;
-            //s_t21 = alpha;
+            /* Fetch precomputed variance for HG phase function */
+            s_t12 = alpha;
+            s_t21 = alpha;
 
         }
         else {
@@ -246,7 +251,6 @@ void computeAddingDoubling(
             if (has_transmissive) {
                 R21 = R12;
                 T21 = T12 /* (n12*n12) */; // We don't need the IOR scaling since we are
-                T12 = T12 /* (n12*n12) */; // computing reflectance only here.
             }
             else {
                 R21 = AtRGB(0.0f);
