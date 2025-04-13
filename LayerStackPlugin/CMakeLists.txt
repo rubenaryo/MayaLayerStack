@@ -10,14 +10,13 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Add source files to the project
-set(SOURCES
-src/LayerStackCmd.cpp
-src/PluginMain.cpp
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
+    "src/*.cpp"
 )
 
 # Add header files to the project
-set(HEADERS
-    src/LayerStackCmd.h
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS
+    "src/*.h"
 )
 
 file(GLOB_RECURSE SRC_PY
