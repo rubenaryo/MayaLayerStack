@@ -29,18 +29,15 @@ def create_ui():
     cmds.button(label="Load Layer Structure", command=load_layer_structure)
     cmds.setParent('..')
     
-    # Create separator
     separator1 = cmds.separator(style='in', horizontal=False)
     
-    # Create right panel for layer controls
+    # Right panel is for layer management
     right_panel = cmds.columnLayout("rightPanel", adjustableColumn=True, columnAttach=('both', 5), width=800, rowSpacing=10)
     cmds.text(label="Material Layer Structure", font="boldLabelFont", align="center")
     
-    # Add controls for managing layers
     cmds.frameLayout(label="Layer Controls", collapsable=True, collapse=False)
     cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 5), rowSpacing=5)
     
-    # Add "Add New Material" button
     cmds.button(label="Add New Material", command=add_new_material)
     
     cmds.setParent('..')
@@ -54,7 +51,6 @@ def create_ui():
     global layer_tree_column
     layer_tree_column = cmds.columnLayout("layerTreeColumn", adjustableColumn=True, columnAttach=('both', 5), width=800, rowSpacing=5)
     
-    # Initialize the layer tree UI
     refresh_layer_tree_ui()
     
     cmds.setParent('..')  # Exit scroll layout
@@ -103,7 +99,6 @@ def add_add_node(parent_id, position=None, *args):
         else: 
             layer_tree[parent_id]["bottom_layer"] = add_node_id
     
-    # Refresh the UI
     refresh_layer_tree_ui()
 
 def add_new_material(*args):
@@ -303,7 +298,7 @@ def create_layer_ui(layer_id, indent_level):
     # Create buttons row based on layer type
     if layer_type == "surface":
         #cmds.rowLayout(numberOfColumns=2, adjustableColumn=True, columnAttach=[(1, 'left', 5), (2, 'right', 5)])
-        cmds.button(label="Edit Name", command=lambda x, lid=layer_id: show_parameter_editor(lid))
+        cmds.button(label="Edit Name", command=lambda x, lid=layer_id: add_parameter_editors(lid))
         cmds.button(label="Remove", command=lambda x, lid=layer_id: remove_layer(lid), backgroundColor=[0.5, 0.2, 0.2])
         
         child_list = layer_tree[layer_id].get("children")
@@ -314,7 +309,6 @@ def create_layer_ui(layer_id, indent_level):
         cmds.setParent('..')
     
     elif layer_type == "add":
-        #cmds.rowLayout(numberOfColumns=1, columnWidth=50, columnAttach=[(1, 'left', 5)])
         cmds.button(label="Remove", command=lambda x, lid=layer_id: remove_layer(lid), backgroundColor=[0.5, 0.2, 0.2])
         cmds.setParent('..')
         
@@ -342,8 +336,7 @@ def create_layer_ui(layer_id, indent_level):
         cmds.setParent('..')
     
     else:  # Parameter layers (dielectric, volumetric, metal)
-        #cmds.rowLayout(numberOfColumns=2, columnWidth2=(200, 60), columnAttach=[(1, 'left', 5), (2, 'left', 5)])
-        cmds.button(label="Edit Parameters", command=lambda x, lid=layer_id: show_parameter_editor(lid))
+        add_parameter_editors(layer_id)
         cmds.button(label="Remove", command=lambda x, lid=layer_id: remove_layer(lid), backgroundColor=[0.5, 0.2, 0.2])
         cmds.setParent('..')
     
@@ -358,37 +351,24 @@ def create_layer_ui(layer_id, indent_level):
     cmds.setParent('..')  # Exit column layout
     cmds.setParent('..')  # Exit frame layout
 
-def show_parameter_editor(layer_id, *args):
+def add_parameter_editors(layer_id, *args):
     # Create a new window for parameter editing
-    if cmds.window("paramEditorWindow", exists=True):
-        cmds.deleteUI("paramEditorWindow")
     
     layer_type = layer_tree[layer_id]["type"]
     layer_name = layer_tree[layer_id]["params"].get("name", "Unnamed Layer")
-    
-    editor_window = cmds.window("paramEditorWindow", title=f"Edit {layer_type.capitalize()} Parameters", width=400)
-    main_column = cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 10), rowSpacing=10)
-    
-    # Add name field for all layer types
-    cmds.frameLayout(label="Layer Name", collapsable=False, marginHeight=10)
-    cmds.rowLayout(numberOfColumns=2, columnWidth2=(100, 250), adjustableColumn=2)
-    cmds.text(label="Name:")
-    cmds.textField(
-        text=layer_name,
-        changeCommand=lambda val, lid=layer_id: update_name_param(lid, val)
-    )
-    cmds.setParent('..')
-    cmds.setParent('..')
     
     # Add type-specific parameters
     if layer_type == "dielectric":
         cmds.frameLayout(label="Dielectric Parameters", collapsable=False, marginHeight=10)
         cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 5), rowSpacing=10)
+
+        ior_slider_name = f"iorSlider{layer_id}"
+        rough_slider_name = f"roughSlider{layer_id}"
         
         # IOR parameter
-        cmds.rowLayout(numberOfColumns=2, columnWidth2=(100, 250), adjustableColumn=2)
-        cmds.text(label="IOR:")
         cmds.floatSliderGrp(
+            ior_slider_name,
+            label='IOR: ',
             value=layer_tree[layer_id]["params"]["ior"],
             field=True,
             minValue=1.0,
@@ -397,12 +377,11 @@ def show_parameter_editor(layer_id, *args):
             fieldMaxValue=10.0,
             changeCommand=lambda val, lid=layer_id: update_param(lid, "ior", val)
         )
-        cmds.setParent('..')
         
         # Roughness parameter
-        cmds.rowLayout(numberOfColumns=2, columnWidth2=(100, 250), adjustableColumn=2)
-        cmds.text(label="Roughness:")
         cmds.floatSliderGrp(
+            rough_slider_name,
+            label='Roughness: ',
             value=layer_tree[layer_id]["params"]["roughness"],
             field=True,
             minValue=0.0,
@@ -410,28 +389,28 @@ def show_parameter_editor(layer_id, *args):
             changeCommand=lambda val, lid=layer_id: update_param(lid, "roughness", val)
         )
         cmds.setParent('..')
-        cmds.setParent('..')
-        cmds.setParent('..')
         
     elif layer_type == "volumetric":
         cmds.frameLayout(label="Volumetric Parameters", collapsable=False, marginHeight=10)
         cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 5), rowSpacing=10)
         
+        albedo_slider_name = f"albedoSlider{layer_id}"
+        depth_slider_name = f"depthSlider{layer_id}"
+
         # Albedo parameter (color)
-        cmds.rowLayout(numberOfColumns=2, columnWidth2=(100, 250), adjustableColumn=2)
-        cmds.text(label="Albedo:")
         cmds.colorSliderGrp(
+            albedo_slider_name,
+            label='Albedo: ',
             rgb=(layer_tree[layer_id]["params"]["albedo"][0], 
                 layer_tree[layer_id]["params"]["albedo"][1], 
                 layer_tree[layer_id]["params"]["albedo"][2]),
-            changeCommand=lambda *args, lid=layer_id: update_color_param(lid, "albedo", args)
+            changeCommand=lambda *args, lid=layer_id: update_color_param(lid, "albedo", albedo_slider_name)
         )
-        cmds.setParent('..')
         
         # Depth parameter
-        cmds.rowLayout(numberOfColumns=2, columnWidth2=(100, 250), adjustableColumn=2)
-        cmds.text(label="Depth:")
         cmds.floatSliderGrp(
+            depth_slider_name,
+            label='Depth: ',
             value=layer_tree[layer_id]["params"]["depth"],
             field=True,
             minValue=0.0,
@@ -441,28 +420,30 @@ def show_parameter_editor(layer_id, *args):
             changeCommand=lambda val, lid=layer_id: update_param(lid, "depth", val)
         )
         cmds.setParent('..')
-        cmds.setParent('..')
-        cmds.setParent('..')
         
     elif layer_type == "metal":
         cmds.frameLayout(label="Metal Parameters", collapsable=False, marginHeight=10)
         cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 5), rowSpacing=10)
+
+        albedo_slider_name = f"albedoSlider{layer_id}"
+        ior_slider_name = f"iorSlider{layer_id}"
+        kappa_slider_name = f"kappaSlider{layer_id}"
+        rough_slider_name = f"roughSlider{layer_id}"
         
         # Albedo parameter (color)
-        cmds.rowLayout(numberOfColumns=2, columnWidth2=(100, 250), adjustableColumn=2)
-        cmds.text(label="Albedo:")
         cmds.colorSliderGrp(
-            rgb=(layer_tree[layer_id]["params"]["albedo"][0], 
+            albedo_slider_name,
+            label='Albedo: ',
+            rgbValue=(layer_tree[layer_id]["params"]["albedo"][0], 
                 layer_tree[layer_id]["params"]["albedo"][1], 
                 layer_tree[layer_id]["params"]["albedo"][2]),
-            changeCommand=lambda *args, lid=layer_id: update_color_param(lid, "albedo", args)
+            changeCommand=lambda *args, lid=layer_id: update_color_param(lid, "albedo", 'metalAlbedoSlider')
         )
-        cmds.setParent('..')
         
         # IOR parameter
-        cmds.rowLayout(numberOfColumns=2, columnWidth2=(100, 250), adjustableColumn=2)
-        cmds.text(label="IOR:")
         cmds.floatSliderGrp(
+            ior_slider_name,
+            label='IOR: ',
             value=layer_tree[layer_id]["params"]["ior"],
             field=True,
             minValue=1.0,
@@ -471,12 +452,11 @@ def show_parameter_editor(layer_id, *args):
             fieldMaxValue=10.0,
             changeCommand=lambda val, lid=layer_id: update_param(lid, "ior", val)
         )
-        cmds.setParent('..')
         
         # Kappa parameter
-        cmds.rowLayout(numberOfColumns=2, columnWidth2=(100, 250), adjustableColumn=2)
-        cmds.text(label="Kappa:")
         cmds.floatSliderGrp(
+            kappa_slider_name,
+            label='Kappa: ',
             value=layer_tree[layer_id]["params"]["kappa"],
             field=True,
             minValue=0.0,
@@ -485,32 +465,19 @@ def show_parameter_editor(layer_id, *args):
             fieldMaxValue=10.0,
             changeCommand=lambda val, lid=layer_id: update_param(lid, "kappa", val)
         )
-        cmds.setParent('..')
         
         # Roughness parameter
-        cmds.rowLayout(numberOfColumns=2, columnWidth2=(100, 250), adjustableColumn=2)
-        cmds.text(label="Roughness:")
         cmds.floatSliderGrp(
+            rough_slider_name,
+            label='Roughness: ',
             value=layer_tree[layer_id]["params"]["roughness"],
             field=True,
             minValue=0.0,
             maxValue=1.0,
             changeCommand=lambda val, lid=layer_id: update_param(lid, "roughness", val)
         )
+
         cmds.setParent('..')
-        cmds.setParent('..')
-        cmds.setParent('..')
-    
-    elif layer_type == "surface":
-        cmds.setParent('..')
-    
-    # Add Apply and Close buttons
-    cmds.rowLayout(numberOfColumns=2, columnWidth2=(195, 195), adjustableColumn=2)
-    cmds.button(label="Apply", command=lambda x: refresh_layer_tree_ui())
-    cmds.button(label="Close", command=lambda x: cmds.deleteUI("paramEditorWindow"))
-    cmds.setParent('..')
-    
-    cmds.showWindow(editor_window)
 
 def update_param(layer_id, param_name, value):
     layer_tree[layer_id]["params"][param_name] = value
@@ -519,8 +486,9 @@ def update_name_param(layer_id, value):
     layer_tree[layer_id]["params"]["name"] = value
     refresh_layer_tree_ui()  # Refresh to update displayed names
 
-def update_color_param(layer_id, param_name, color_values):
+def update_color_param(layer_id, param_name, slider_name):
     # For color parameters, we get r, g, b as separate arguments
+    color_values = cmds.colorSliderGrp(slider_name, query=True, rgb=True)
     r, g, b = color_values[0], color_values[1], color_values[2]
     layer_tree[layer_id]["params"][param_name] = [r, g, b]
 
@@ -578,12 +546,10 @@ def apply_function(*args):
     
     # Check if a mesh is selected
     if selected_mesh:
-        # Check if we have any layers defined
         if not layer_tree["root"]["children"]:
-            cmds.warning("No material layers defined. Please add at least one layer.")
+            cmds.warning("No materials defined. Please add at least one layer.")
             return
             
-        # Validate the layer tree structure
         validation_errors = validate_layer_tree()
         if validation_errors:
             cmds.confirmDialog(
@@ -593,15 +559,16 @@ def apply_function(*args):
             )
             return
         
-        # Print the layer structure for debugging
         print("Applying material stack to mesh: {}".format(selected_mesh))
         print("Layer structure:")
         print(json.dumps(layer_tree, indent=2))
-        
+
+        first_material = layer_tree["root"]["children"][0]
+        first_material_name = first_material["params"]["name"]
+        cmds.applyMultiLayerMaterial(selected_mesh)
+
         try:
-            # Here you would integrate with your actual material application function
-            # For now, we'll just show a success message
-            cmds.confirmDialog(title="Success", message=f"Applied material stack to {selected_mesh}", button=["OK"])
+            cmds.confirmDialog(title="Success", message=f"Applied material {first_material_name} to {selected_mesh}", button=["OK"])
         except Exception as e:
             cmds.error("Error applying material: {}".format(str(e)))
     else:
@@ -611,7 +578,6 @@ def validate_layer_tree():
     """Validate the layer tree structure for completeness"""
     errors = []
     
-    # Function to validate a single add node
     def validate_add_node(node_id):
         node = layer_tree[node_id]
         if node["top_layer"] is None:
@@ -627,14 +593,12 @@ def validate_layer_tree():
         for child_id in node["children"]:
             check_nodes(child_id)
     
-    # Start validation from root's children
     for child_id in layer_tree["root"]["children"]:
         check_nodes(child_id)
     
     return "\n".join(errors)
 
 def save_layer_structure(*args):
-    # Create a file dialog
     file_path = cmds.fileDialog2(fileFilter="JSON Files (*.json)", dialogStyle=2, fileMode=0, caption="Save Layer Structure")
     
     if file_path:
@@ -646,7 +610,6 @@ def save_layer_structure(*args):
             cmds.error("Error saving layer structure: {}".format(str(e)))
 
 def load_layer_structure(*args):
-    # Create a file dialog
     file_path = cmds.fileDialog2(fileFilter="JSON Files (*.json)", dialogStyle=2, fileMode=1, caption="Load Layer Structure")
     
     if file_path:
@@ -655,7 +618,6 @@ def load_layer_structure(*args):
                 global layer_tree, layer_counter
                 loaded_tree = json.load(file)
                 
-                # Validate the loaded tree has the correct structure
                 if "root" not in loaded_tree or "type" not in loaded_tree["root"] or loaded_tree["root"]["type"] != "root":
                     cmds.error("Invalid layer structure file format")
                     return
@@ -671,15 +633,11 @@ def load_layer_structure(*args):
                         except:
                             pass
                 
-            # Refresh the UI
             refresh_layer_tree_ui()
             cmds.confirmDialog(title="Success", message="Layer structure loaded successfully", button=["OK"])
         except Exception as e:
             cmds.error("Error loading layer structure: {}".format(str(e)))
 
 def cleanup_ui():
-    # Check if the window already exists, if so, delete it
     if cmds.window("meshSelectionUI", exists=True):
         cmds.deleteUI("meshSelectionUI")
-    if cmds.window("paramEditorWindow", exists=True):
-        cmds.deleteUI("paramEditorWindow")
