@@ -1,11 +1,46 @@
 import maya.cmds as cmds
 import maya.mel as mel
 import json
+import os
+import glob
 
 # Global variables to track the layer structure
 layer_tree = {"root": {"type": "root", "children": []}}
 layer_counter = 0
 selected_param_layer = None  # Track which parameter layer is currently being edited
+
+def create_preset_buttons():
+    # Get the directory of the current script
+    script_path = cmds.pluginInfo("LayerStackPlugin.mll", query=True, path=True)
+
+    if not script_path:
+        # If we can't get the path directly, try to get the currently executing script
+        script_path = mel.eval('getenv("MAYA_SCRIPT_PATH")').split(';')[0]
+    
+    global preset_dir
+    preset_dir = os.path.dirname(script_path)
+    
+    # Find all JSON files in the same directory
+    json_files = glob.glob(os.path.join(preset_dir, "*.json"))
+    
+    # Create buttons for each JSON file
+    if json_files:
+        for json_file in json_files:
+            json_file = os.path.normpath(json_file)
+            file_name = os.path.basename(json_file)
+            preset_name = os.path.splitext(file_name)[0]
+            #print(json_file)
+
+            # Create button with a different color to distinguish from other buttons
+            cmds.button(
+                label=preset_name,
+                command=lambda x, path=json_file: load_layer_structure(path),
+                #backgroundColor=[0.2, 0.5, 0.7],
+                height=30
+            )
+    else:
+        cmds.text(label="No presets found", align="center")
+
 
 def create_ui():
     # Check if the window already exists, if so, delete it
@@ -26,7 +61,26 @@ def create_ui():
     cmds.separator(height=20, style='in')
     cmds.button(label="Apply Material", command=apply_function, height=50, backgroundColor=[0.2, 0.7, 0.2])
     cmds.button(label="Save Layer Structure", command=save_layer_structure)
-    cmds.button(label="Load Layer Structure", command=load_layer_structure)
+    cmds.button(label="Load Layer Structure", command=load_from_file)
+
+    # Preset section
+    preset_separator = cmds.separator(height=20, style='in', horizontal=True)
+    #preset_frame = cmds.frameLayout(label="Material Presets", collapsable=True, collapse=False)
+    cmds.text(label="Material Presets", font="boldLabelFont", align="center")
+    #preset_frame = cmds.scrollLayout(height=600, width=200, horizontalScrollBarThickness=0)
+    #cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 5), rowSpacing=5)
+    cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 5), width=250, rowSpacing=3)
+
+    create_preset_buttons()
+
+    
+    # Exit columnLayout
+    cmds.setParent('..')
+
+    # Exit preset_frame
+    #cmds.setParent('..')
+
+    # Exit Left Panel
     cmds.setParent('..')
     
     separator1 = cmds.separator(style='in', horizontal=False)
@@ -614,12 +668,20 @@ def save_layer_structure(*args):
         except Exception as e:
             cmds.error("Error saving layer structure: {}".format(str(e)))
 
-def load_layer_structure(*args):
-    file_path = cmds.fileDialog2(fileFilter="JSON Files (*.json)", dialogStyle=2, fileMode=1, caption="Load Layer Structure")
+def load_from_file(*args):
+    global preset_dir
+    file_path = cmds.fileDialog2(fileFilter="JSON Files (*.json)", dialogStyle=2, fileMode=1, caption="Load Layer Structure", startingDirectory=preset_dir)
     
+    if not file_path:
+        return
+
+    load_layer_structure(file_path[0])
+
+def load_layer_structure(file_path):
+
     if file_path:
         try:
-            with open(file_path[0], 'r') as file:
+            with open(file_path, 'r') as file:
                 global layer_tree, layer_counter
                 loaded_tree = json.load(file)
                 

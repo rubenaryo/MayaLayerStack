@@ -28,7 +28,9 @@ void removeMenuItem()
 
     // Destroy open windows
     MGlobal::executePythonCommand(
+        "import importlib\n"
         "import layer_stack_ui\n"
+        "importlib.reload(layer_stack_ui)\n"
         "layer_stack_ui.cleanup_ui()");
 }
 
@@ -48,10 +50,12 @@ MStatus initializePlugin( MObject obj )
     MString pluginPath = plugin.loadPath() + "/../scripts";
 
     MString command = "import sys\n"
+        "import importlib\n"
         "plugin_path = r'" + pluginPath + "'\n"
         "if plugin_path not in sys.path:\n"
         "    sys.path.append(plugin_path)\n"
-        "import layer_stack_ui";
+        "import layer_stack_ui\n"
+        "importlib.reload(layer_stack_ui)";
 
     MGlobal::executePythonCommand(command);
 
