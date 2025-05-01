@@ -572,7 +572,8 @@ def apply_function(*args):
         cmds.applyMultiLayerMaterial(selected_mesh, json_tree, first_material_name)
 
         try:
-            cmds.confirmDialog(title="Success", message=f"Applied material {first_material_name} to {selected_mesh}", button=["OK"])
+            #cmds.confirmDialog(title="Success", message=f"Applied material {first_material_name} to {selected_mesh}", button=["OK"])
+            cmds.confirmDialog(title="Success", message="Applied material to mesh", button=["OK"])
         except Exception as e:
             cmds.error("Error applying material: {}".format(str(e)))
     else:

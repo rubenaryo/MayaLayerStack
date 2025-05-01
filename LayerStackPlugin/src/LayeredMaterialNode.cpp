@@ -37,7 +37,7 @@ MStatus ExecuteVec3ParamSet(MString& mayaName, const std::string& paramName, nlo
 	MString cmd = "setAttr \"" + mayaName + "." + MString(paramName.c_str()) + "\" -type double3 "
 		+ jsonVec3[0].get<float>() + MString(" ")
 		+ jsonVec3[1].get<float>() + MString(" ")
-		+ jsonVec3[1].get<float>() + MString(";");
+		+ jsonVec3[2].get<float>() + MString(";");
 	
 	MGlobal::displayInfo("[LayerStack] Executing Command: " + cmd);
 	return MGlobal::executeCommand(cmd);
@@ -303,10 +303,16 @@ MStatus LayeredMaterialNode::InitChildrenFromJSON(nlohmann::json& jsonData, nloh
 		NodeType type = GetNodeTypeFromString(node_type);
 
 		LayeredMaterialNode* node = new LayeredMaterialNode(type);
-		status = node->Create();
-		
 		if (child_node.find("params") != child_node.end())
+		{
+			std::string desiredName = (child_node["params"]["name"]).get<std::string>();
+			status = node->Create(desiredName.c_str());
 			status = node->SetParamsFromJSON(child_node["params"]);
+		}
+		else
+		{
+			status = node->Create();
+		}
 			
 		status = SetChild((NodeChildIndex)mChildrenCount, node);
 		status = node->InitChildrenFromJSON(jsonData, child_node);
@@ -321,8 +327,13 @@ MStatus LayeredMaterialNode::SetParamsFromJSON(nlohmann::json& paramsStruct)
 
 	MStatus status = MStatus::kSuccess;
 	json::iterator it = paramsStruct.begin();
+
+	int counter = 0;
 	for (; it != paramsStruct.end(); ++it)
 	{
+		if (counter++ > 10)
+			break;
+
 		const std::string& paramName = it.key(); // param name
 		json& paramValue = it.value();
 
