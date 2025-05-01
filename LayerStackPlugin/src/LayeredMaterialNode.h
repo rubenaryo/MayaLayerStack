@@ -5,9 +5,11 @@
 #include <maya/MStatus.h>
 
 #include <vector>
+#include "external/nlohmann/json.hpp"
 
 enum NodeType
 {
+	NT_INVALID = -1,
 	NT_SURFACE = 0,
 	NT_ADD,
 	NT_VOLUMETRIC,
@@ -24,7 +26,7 @@ enum NodeChildIndex
 };
 
 MString GetNodeTypeName(NodeType t);
-MStatus ExecuteNodeCreation(NodeType t, MString& outName);
+MStatus ExecuteNodeCreation(NodeType t, MString& outName, const char* pDesiredName = nullptr);
 MString GetNodeTypeOutputParamName(NodeType t);
 size_t GetNodeTypeChildCount(NodeType t);
 
@@ -34,15 +36,21 @@ struct LayeredMaterialNode
 	LayeredMaterialNode(NodeType t);
 	~LayeredMaterialNode();
 
-	MStatus Create();
+	MStatus Create(const char* pDesiredName = nullptr);
 
 	MStatus InitDefaultMaterialTree();
+	MStatus InitFromJSON(MString& jsonData, MString& desiredMaterialName);
+	MStatus InitChildrenFromJSON(nlohmann::json& jsonData, nlohmann::json& parent);
 	MStatus SetChild(NodeChildIndex index, LayeredMaterialNode* pChild);
+	MStatus SetParamsFromJSON(nlohmann::json& paramsStruct);
+
+	size_t GetChildCapacity() const { return mChildrenCapacity; }
 
 	LayeredMaterialNode** mChildren;
 	MString mInstanceName;
 	NodeType mType;
 	size_t mChildrenCount;
+	size_t mChildrenCapacity;
 };
 
 MStatus LinkNodes(LayeredMaterialNode& parent, LayeredMaterialNode& child, NodeChildIndex childIndex);

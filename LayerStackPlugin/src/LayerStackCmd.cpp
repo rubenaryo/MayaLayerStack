@@ -12,6 +12,8 @@
 #include <maya/MDagPath.h>
 #include <maya/MFnAttribute.h>
 
+#include "external/nlohmann/json.hpp"
+
 // Stolen from Maya Code, but added a custom log message
 #define LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(_status, _logMsg)		\
 { 														\
@@ -129,16 +131,20 @@ LayerStackCmd::~LayerStackCmd()
 
 MStatus LayerStackCmd::doIt( const MArgList& args )
 {
+    using json = nlohmann::json;
+
     MStatus status;
 
-    if (args.length() < 1)
+    if (args.length() < 3)
     {
-        MGlobal::displayError("You must pass a mesh as an argument.");
+        MGlobal::displayError("You must pass the mesh, the json structure, and the desired material as an argument.");
         return MS::kFailure;
     }
 
     // Get the mesh name passed as an argument
     MString selectedStr = args.asString(0);
+    MString jsonComplete = args.asString(1);
+    MString materialName = args.asString(2);
 
     // Look up the shape node from the name
     MObject shapeNode;
@@ -157,7 +163,7 @@ MStatus LayerStackCmd::doIt( const MArgList& args )
     status = shadingGroup.AssignMaterial();
     LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to assign material to SG");
     
-    status = shadingGroup.mMaterialRoot->InitDefaultMaterialTree();
+    status = shadingGroup.mMaterialRoot->InitFromJSON(jsonComplete, materialName);
     LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to init default material tree");
 
     // Disconnect the mesh from any existing shading group

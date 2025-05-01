@@ -234,11 +234,11 @@ def add_sublayer_add_node(parent_id, *args):
 
 def create_default_params(layer_type):
     if layer_type == "dielectric":
-        return {"ior": 1.5, "roughness": 0.1}
+        return {"IOR": 1.5, "roughness": 0.1}
     elif layer_type == "volumetric":
         return {"albedo": [1.0, 1.0, 1.0], "depth": 1.0}
     elif layer_type == "metal":
-        return {"albedo": [0.8, 0.8, 0.8], "ior": 2.5, "kappa": 1.0, "roughness": 0.1}
+        return {"albedo": [0.8, 0.8, 0.8], "IOR": 2.5, "kappa": 1.0, "roughness": 0.1}
     return {}
 
 def refresh_layer_tree_ui():
@@ -369,13 +369,13 @@ def add_parameter_editors(layer_id, *args):
         cmds.floatSliderGrp(
             ior_slider_name,
             label='IOR: ',
-            value=layer_tree[layer_id]["params"]["ior"],
+            value=layer_tree[layer_id]["params"]["IOR"],
             field=True,
             minValue=1.0,
             maxValue=3.0,
             fieldMinValue=1.0,
             fieldMaxValue=10.0,
-            changeCommand=lambda val, lid=layer_id: update_param(lid, "ior", val)
+            changeCommand=lambda val, lid=layer_id: update_param(lid, "IOR", val)
         )
         
         # Roughness parameter
@@ -437,20 +437,20 @@ def add_parameter_editors(layer_id, *args):
             rgbValue=(layer_tree[layer_id]["params"]["albedo"][0], 
                 layer_tree[layer_id]["params"]["albedo"][1], 
                 layer_tree[layer_id]["params"]["albedo"][2]),
-            changeCommand=lambda *args, lid=layer_id: update_color_param(lid, "albedo", 'metalAlbedoSlider')
+            changeCommand=lambda *args, lid=layer_id: update_color_param(lid, "albedo", albedo_slider_name)
         )
         
         # IOR parameter
         cmds.floatSliderGrp(
             ior_slider_name,
             label='IOR: ',
-            value=layer_tree[layer_id]["params"]["ior"],
+            value=layer_tree[layer_id]["params"]["IOR"],
             field=True,
             minValue=1.0,
             maxValue=5.0,
             fieldMinValue=1.0,
             fieldMaxValue=10.0,
-            changeCommand=lambda val, lid=layer_id: update_param(lid, "ior", val)
+            changeCommand=lambda val, lid=layer_id: update_param(lid, "IOR", val)
         )
         
         # Kappa parameter
@@ -561,11 +561,15 @@ def apply_function(*args):
         
         print("Applying material stack to mesh: {}".format(selected_mesh))
         print("Layer structure:")
-        print(json.dumps(layer_tree, indent=2))
+        #print(json.dumps(layer_tree, indent=2))
+
+        json_tree = json.dumps(layer_tree)
+        print(json_tree)
+        #cmds.displayInfo(f"[PYTHON] {json_tree}")
 
         first_material = layer_tree["root"]["children"][0]
-        first_material_name = first_material["params"]["name"]
-        cmds.applyMultiLayerMaterial(selected_mesh)
+        first_material_name = layer_tree[first_material]["params"]["name"]
+        cmds.applyMultiLayerMaterial(selected_mesh, json_tree, first_material_name)
 
         try:
             cmds.confirmDialog(title="Success", message=f"Applied material {first_material_name} to {selected_mesh}", button=["OK"])
