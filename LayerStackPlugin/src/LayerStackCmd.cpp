@@ -83,8 +83,9 @@ MStatus GetShapeNodeFromSelection(const MString& selection, MObject& out_shapeNo
 MStatus DisconnectFromCurrentShadingGroup(MObject& shapeObj)
 {
     MStatus status;
-
     MFnMesh meshFn(shapeObj, &status);
+#define USE_CPP 0 
+#if USE_CPP
 
     MDGModifier dgModifier;
     MFnDagNode meshDagNode(shapeObj);
@@ -118,6 +119,18 @@ MStatus DisconnectFromCurrentShadingGroup(MObject& shapeObj)
             }
         }
     }
+#else
+    MString findShadingGroupsCmd = "listConnections -destination true -type \"shadingEngine\" " + meshFn.name() + ";";
+    MStringArray shadingGroupNameResult;
+    status = MGlobal::executeCommand(findShadingGroupsCmd, shadingGroupNameResult);
+
+    if (shadingGroupNameResult.length() > 0)
+    {
+        MString shadingGroupName = shadingGroupNameResult[0];
+        MString disconnectShadingGroupCmd = "sets -rm " + shadingGroupName + " " + meshFn.name();
+        MGlobal::executeCommand(disconnectShadingGroupCmd, true);
+    }
+#endif
 
     return status;
 }
