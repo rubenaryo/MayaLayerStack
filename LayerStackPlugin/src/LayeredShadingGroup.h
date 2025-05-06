@@ -8,8 +8,8 @@ struct LayeredMaterialNode;
 
 struct LayeredShadingGroup
 {
-	MStatus Create();
-	MStatus AssignMaterial(LayeredMaterialNode* pRoot = nullptr);
+	MStatus Create(MString& materialName);
+	MStatus AssignMaterial(LayeredMaterialNode* pRoot, MString& materialName);
 
 	LayeredMaterialNode* mMaterialRoot = nullptr;
 	MString mName;

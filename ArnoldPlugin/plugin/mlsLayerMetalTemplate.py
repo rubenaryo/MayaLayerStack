@@ -10,7 +10,7 @@ class AEmlsLayerMetalTemplate(ShaderAETemplate):
 
         self.beginLayout('Layer Parameters', collapse=False)
         self.addControl('albedo', label='Albedo')
-        self.addControl('iOR', label='IOR')
+        self.addControl('IOR', label='IOR')
         self.addControl('kappa', label='Kappa')
         self.addControl('roughness', label='Roughness')
         self.endLayout()

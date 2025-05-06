@@ -15,8 +15,8 @@ enum LayerStackMetalParams {
 node_parameters
 {
     AiParameterRGB("albedo", 1.0f, 0.7f, 0.7f);
-    AiParameterFlt("IOR", 0.47f);
-    AiParameterFlt("kappa", 2.9f);
+    AiParameterFlt("IOR", 0.5f);
+    AiParameterFlt("kappa", 3.0f);
     AiParameterFlt("roughness", 0.2f);
 }
 

@@ -2,6 +2,17 @@
 
 #include <maya/Mstring.h>
 
+#define LAYERSTACK_ENABLE_CMD_LOGGING 1
+
+#if LAYERSTACK_ENABLE_CMD_LOGGING
+#define LAYERSTACK_CMD_LOG(mstr) \
+do {\
+	MGlobal::displayInfo("[LayerStack] Executing Command: " + mstr);\
+} while(0)
+#else
+#define LAYERSTACK_CMD_LOG(mstr)
+#endif
+
 MString GetNodeTypeName(NodeType t)
 {
 	if (t < 0 || t >= NT_COUNT)
@@ -26,9 +37,33 @@ MStatus ExecuteNodeCreation(NodeType t, MString& outName, const char* pDesiredNa
 	{
 		cmd += " -n " + MString(pDesiredName);
 	}
-
-	MGlobal::displayInfo("[LayerStack] Executing Command: " + cmd);
+	LAYERSTACK_CMD_LOG(cmd);
 	return MGlobal::executeCommand(cmd, outName);
+}
+
+MStatus ExecuteNodeDeletion(MString& name)
+{
+	MString cmd = "delete " + name;
+	LAYERSTACK_CMD_LOG(cmd);
+	return MGlobal::executeCommand(cmd);
+}
+
+std::string GetSetVec3Command(MString& mayaName, const std::string& paramName, nlohmann::json& jsonVec3)
+{
+	MString cmd = "setAttr \"" + mayaName + "." + MString(paramName.c_str()) + "\" -type double3 "
+		+ jsonVec3[0].get<float>() + MString(" ")
+		+ jsonVec3[1].get<float>() + MString(" ")
+		+ jsonVec3[2].get<float>() + MString(";");
+
+	LAYERSTACK_CMD_LOG(cmd);
+	return std::string(cmd.asChar());
+}
+
+std::string GetSetFloatCommand(MString& mayaName, const std::string& paramName, float val)
+{
+	MString cmd = "setAttr \"" + mayaName + "." + MString(paramName.c_str()) + MString("\" ") + val + MString(";");
+	LAYERSTACK_CMD_LOG(cmd);
+	return std::string(cmd.asChar());
 }
 
 MStatus ExecuteVec3ParamSet(MString& mayaName, const std::string& paramName, nlohmann::json& jsonVec3)
@@ -39,7 +74,8 @@ MStatus ExecuteVec3ParamSet(MString& mayaName, const std::string& paramName, nlo
 		+ jsonVec3[1].get<float>() + MString(" ")
 		+ jsonVec3[2].get<float>() + MString(";");
 	
-	MGlobal::displayInfo("[LayerStack] Executing Command: " + cmd);
+
+	LAYERSTACK_CMD_LOG(cmd);
 	return MGlobal::executeCommand(cmd);
 }
 
@@ -48,7 +84,7 @@ MStatus ExecuteFloatParamSet(MString& mayaName, const std::string& paramName, fl
 	//setAttr "mlsLayerMetal1.kappa" 1.977012;
 	MString cmd = "setAttr \"" + mayaName + "." + MString(paramName.c_str()) + MString("\" ") + val;
 
-	MGlobal::displayInfo("[LayerStack] Executing Command: " + cmd);
+	LAYERSTACK_CMD_LOG(cmd);
 	return MGlobal::executeCommand(cmd);
 }
 
@@ -137,7 +173,7 @@ MStatus LinkNodes(LayeredMaterialNode& parent, LayeredMaterialNode& child, NodeC
 		child.mInstanceName + "." + GetNodeTypeOutputParamName(child.mType) + " " +
 		parent.mInstanceName + "." + GetNodeTypeInputParamName(parent.mType, childIndex);
 
-	MGlobal::displayInfo("[LayerStack] Executing Command: " + cmd);
+	LAYERSTACK_CMD_LOG(cmd);
 	return MGlobal::executeCommand(cmd);
 }
 
@@ -148,26 +184,75 @@ LayeredMaterialNode::LayeredMaterialNode(NodeType t)
 	,	mType(t)
 	,	mChildrenCount(0)
 	,	mChildrenCapacity(0)
+	,	bCreated(false)
 {
-	mChildrenCapacity = GetNodeTypeChildCount(t);
-	if (mChildrenCapacity > 0)
-	{
-		mChildren = new LayeredMaterialNode*[mChildrenCount]();
-	}
 }
 
 LayeredMaterialNode::~LayeredMaterialNode()
 {
-	if (mChildren)
-	{
-		delete[] mChildren;
-		mChildren = nullptr;
-	}
 }
 
 MStatus LayeredMaterialNode::Create(const char* pDesiredName)
 {
-	return ExecuteNodeCreation(mType, mInstanceName, pDesiredName);
+	if (bCreated)
+	{
+		MGlobal::displayError("[LayerStack] ERROR: Attempted to Create() a node that was already created.");
+	}
+
+	mChildrenCapacity = GetNodeTypeChildCount(mType);
+	if (mChildrenCapacity > 0)
+	{
+		mChildren = new LayeredMaterialNode* [mChildrenCapacity]();
+	}
+
+	MStatus success = ExecuteNodeCreation(mType, mInstanceName, pDesiredName);
+	if (success != MStatus::kSuccess)
+	{
+		Delete();
+	}
+
+	bCreated = true;
+	return success;
+}
+
+MStatus LayeredMaterialNode::Delete()
+{
+	if (mChildren)
+	{
+		for (int i = 0; i != mChildrenCount; ++i)
+		{
+			LayeredMaterialNode* pChild = mChildren[i];
+			if (pChild)
+			{
+				pChild->Delete();
+				delete pChild;
+			}
+		}
+
+		delete[] mChildren;
+		mChildren = nullptr;
+		mChildrenCapacity = 0;
+		mChildrenCount = 0;
+	}
+
+	MStatus success = ExecuteNodeDeletion(mInstanceName);
+	if (success != MStatus::kSuccess)
+	{
+		MGlobal::displayWarning("[LayerStack] WARNING: Failed to delete node: " + mInstanceName);
+	}
+
+	bCreated = false;
+	return success;
+}
+
+void LayeredMaterialNode::Reset()
+{
+	// Only to be called by the non-deleted root.
+	if (mType != NT_SURFACE)
+		return;
+
+	Delete();
+	Create();
 }
 
 // Stolen from Maya Code, but added a custom log message
@@ -205,7 +290,7 @@ MStatus LayeredMaterialNode::InitDefaultMaterialTree()
 
 	status = SetChild(PARAM, addNode0);
 	LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to set add0 as child of surface");
-
+	
 	status = addNode0->SetChild(TOP_LAYER, dielectricNode);
 	LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to set diel as child of add0");
 
@@ -224,8 +309,6 @@ MStatus LayeredMaterialNode::InitFromJSON(MString& jsonData, MString& desiredMat
 	const char* jsonStr = jsonData.asChar();
 	const char* matNameStr = desiredMaterialName.asChar();
 
-	const char* TEST_STR = "'root': {'type': 'root', 'children' : ['layer_1'] }, 'layer_1' : {'type': 'surface', 'parent' : 'root', 'children' : ['layer_2'] , 'params' : {'name': 'New Multi-Layer Material'}}, 'layer_2' : {'type': 'add', 'parent' : 'layer_1', 'children' : ['layer_3', 'layer_4'] , 'params' : {'name': 'Add_2'}, 'top_layer' : 'layer_3', 'bottom_layer' : 'layer_4'}, 'layer_3' : {'type': 'metal', 'parent' : 'layer_2', 'children' : [] , 'params' : {'albedo': [0.758169949054718, 0.0, 0.0] , 'ior' : 3.2535947714999223, 'kappa' : 1.0, 'roughness' : 0.1, 'name' : 'NewMetal'}, 'position' : 'top'}, 'layer_4' : {'type': 'dielectric', 'parent' : 'layer_2', 'children' : [] , 'params' : {'ior': 1.5, 'roughness' : 0.1, 'name' : 'NewDielectric'}, 'position' : 'bottom'}";
-
 	json materialData;
 	
 	try
@@ -236,11 +319,7 @@ MStatus LayeredMaterialNode::InitFromJSON(MString& jsonData, MString& desiredMat
 	{
 		MGlobal::displayError("[LayerStack] JSON PARSE ERROR: " + MString(e.what()));
 	}
-
-
-	//std::string masterStr = materialData.get<std::string>().c_str();
 	
-	// TODO: Maybe just do a table lookup?
 	json::iterator it = materialData.begin();
 	bool found = false;
 	for (;it != materialData.end(); it++)
@@ -266,15 +345,21 @@ MStatus LayeredMaterialNode::InitFromJSON(MString& jsonData, MString& desiredMat
 		MGlobal::displayError("[LayerStack] Failed to find material from jsonData");
 		return MStatus::kNotFound;
 	}
-
-	status = InitChildrenFromJSON(materialData, it.value());
+	std::string rootMaterialName(matNameStr);
+	status = InitChildrenFromJSON(materialData, it.value(), rootMaterialName);
 
 	return status;
 }
 
-MStatus LayeredMaterialNode::InitChildrenFromJSON(nlohmann::json& jsonData, nlohmann::json& parent)
+MStatus LayeredMaterialNode::InitChildrenFromJSON(nlohmann::json& jsonData, nlohmann::json& parent, const std::string& rootMaterialName)
 {
 	using json = nlohmann::json;
+
+	// Can accept no children, early out.
+	if (mChildrenCapacity == 0)
+	{
+		return MStatus::kSuccess;
+	}
 
 	MStatus status;
 
@@ -288,7 +373,7 @@ MStatus LayeredMaterialNode::InitChildrenFromJSON(nlohmann::json& jsonData, nloh
 		if (counter++ > MAX_ITER_COUNT)
 		{
 			MGlobal::displayWarning("[LayerStack] Warning: Max iteration count exceeded when iterating through children. Force exiting...");
-			break;
+			return MStatus::kFailure;
 		}
 
 		if (mChildrenCount >= GetChildCapacity())
@@ -306,6 +391,8 @@ MStatus LayeredMaterialNode::InitChildrenFromJSON(nlohmann::json& jsonData, nloh
 		if (child_node.find("params") != child_node.end())
 		{
 			std::string desiredName = (child_node["params"]["name"]).get<std::string>();
+			desiredName.append("_");
+			desiredName.append(rootMaterialName);
 			status = node->Create(desiredName.c_str());
 			status = node->SetParamsFromJSON(child_node["params"]);
 		}
@@ -315,7 +402,7 @@ MStatus LayeredMaterialNode::InitChildrenFromJSON(nlohmann::json& jsonData, nloh
 		}
 			
 		status = SetChild((NodeChildIndex)mChildrenCount, node);
-		status = node->InitChildrenFromJSON(jsonData, child_node);
+		status = node->InitChildrenFromJSON(jsonData, child_node, rootMaterialName);
 	}
 
 	return status;
@@ -328,11 +415,15 @@ MStatus LayeredMaterialNode::SetParamsFromJSON(nlohmann::json& paramsStruct)
 	MStatus status = MStatus::kSuccess;
 	json::iterator it = paramsStruct.begin();
 
+	static const int MAX_PARAM_COUNT = 10;
 	int counter = 0;
 	for (; it != paramsStruct.end(); ++it)
 	{
-		if (counter++ > 10)
-			break;
+		if (counter++ > MAX_PARAM_COUNT)
+		{
+			MGlobal::displayWarning("[LayerStack] Warning: Max iteration count exceeded when setting params. Force exiting...");
+			return MStatus::kFailure;
+		}
 
 		const std::string& paramName = it.key(); // param name
 		json& paramValue = it.value();
@@ -347,7 +438,7 @@ MStatus LayeredMaterialNode::SetParamsFromJSON(nlohmann::json& paramsStruct)
 		}
 		else
 		{
-			continue; // Names and such
+			continue; // Names and such are handled at creation time
 		}
 	}
 
@@ -356,6 +447,11 @@ MStatus LayeredMaterialNode::SetParamsFromJSON(nlohmann::json& paramsStruct)
 
 MStatus LayeredMaterialNode::SetChild(NodeChildIndex index, LayeredMaterialNode* pChild)
 {
+	if (mChildren == nullptr)
+	{
+		return MStatus::kFailure;
+	}
+
 	if (index >= GetChildCapacity())
 		return MStatus::kFailure;
 

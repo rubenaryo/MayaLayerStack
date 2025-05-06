@@ -9,7 +9,7 @@ class AEmlsLayerDielectricTemplate(ShaderAETemplate):
         # self.addCustom('message', 'AEshaderTypeNew', 'AEshaderTypeReplace')
 
         self.beginLayout('Layer Parameters', collapse=False)
-        self.addControl('iOR', label='IOR')
+        self.addControl('IOR', label='IOR')
         self.addControl('roughness', label='Roughness')
         self.endLayout()
 

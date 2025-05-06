@@ -153,6 +153,7 @@ shader_evaluate
         float kappa = 0.0;
         float alpha = 0.0;
         float depth = 0.0;
+        float g = 0.0;
         AtRGB sigma_a(0.0);
         AtRGB sigma_s(0.0);
         
@@ -175,9 +176,14 @@ shader_evaluate
             else if (mp.key == "depth") {
                 depth = mp.values[0];
             }
+            else if (mp.key == "g") {
+                g = mp.values[0];
+            }
         }
         if (depth > 0.0) {
-            computeSigma(albedo, 0.1, sigma_a, sigma_s);
+            computeSigma(albedo, 1.0, sigma_a, sigma_s);
+            alpha = gToVariance(g);
+            eta = lsbsdf.etas.back();
         }
         
         lsbsdf.albedos.push_back(albedo);

@@ -14,6 +14,20 @@
 
 #include "external/nlohmann/json.hpp"
 
+// Global, static state. For simplicity..
+std::vector<LayeredShadingGroup*> sShadingGroups;
+void LayerStackCmd::CleanupShadingGroups()
+{
+    for (LayeredShadingGroup* group : sShadingGroups)
+    {
+        if (!group)
+            continue;
+
+        delete group;
+    }
+    sShadingGroups.clear();
+}
+
 // Stolen from Maya Code, but added a custom log message
 #define LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(_status, _logMsg)		\
 { 														\
@@ -25,9 +39,6 @@
 		return (_status);								\
 	}													\
 }
-
-static const MString LAYER_STACK_MATERIAL_NAME = "LayerStackMaterial";
-static const MString LAYER_STACK_GROUP_NAME = "LayerStackShadingGroup";
 
 MStatus DebugPrintAttributes(MFnDependencyNode& fn)
 {
@@ -116,8 +127,8 @@ MStatus ConnectToLayeredShadingGroup(MObject& shapeObj, LayeredShadingGroup& sha
     MStatus status;
     MFnMesh meshFn(shapeObj, &status);
 
-    MString cmd = "connectAttr -f " + meshFn.name() + ".instObjGroups[0] " + shadingGroup.mName + ".dagSetMembers[0]";
-    MGlobal::displayInfo("Executing command: " + cmd);
+    //MString cmd = "connectAttr -f " + meshFn.name() + ".instObjGroups[0] " + shadingGroup.mName + ".dagSetMembers[0]";
+    MString cmd = "sets -addElement " + shadingGroup.mName + " " + meshFn.name();
     return MGlobal::executeCommand(cmd);
 }
 
@@ -132,7 +143,6 @@ LayerStackCmd::~LayerStackCmd()
 MStatus LayerStackCmd::doIt( const MArgList& args )
 {
     using json = nlohmann::json;
-
     MStatus status;
 
     if (args.length() < 3)
@@ -145,6 +155,8 @@ MStatus LayerStackCmd::doIt( const MArgList& args )
     MString selectedStr = args.asString(0);
     MString jsonComplete = args.asString(1);
     MString materialName = args.asString(2);
+    const char* testName = materialName.asChar();
+    const wchar_t* testName2 = materialName.asWChar();
 
     // Look up the shape node from the name
     MObject shapeNode;
@@ -153,27 +165,84 @@ MStatus LayerStackCmd::doIt( const MArgList& args )
 
     MFnMesh meshFn(shapeNode);
 
-    MObject blinnObj;
-    MObject layeredSGObj;
+    LayeredShadingGroup* pShadingGroup = FindShadingGroupForMaterialName(materialName);
+    if (pShadingGroup)
+    {
+        MGlobal::displayInfo("[LayerStack] Found existing shading group: " + pShadingGroup->mName + "\n");
+    }
 
-    LayeredShadingGroup shadingGroup;
-    status = shadingGroup.Create();
-    LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to create SG");
-    
-    status = shadingGroup.AssignMaterial();
+    if (!pShadingGroup)
+    {
+        // Need to create a new one.
+        pShadingGroup = CreateNewShadingGroup(materialName);
+        if (!pShadingGroup)
+        {
+            MGlobal::displayError("[LayerStack] Fatal Error: Failed to allocate new shading group");
+            return MStatus::kFailure;
+        }
+    }
+
+    if (!pShadingGroup)
+    {
+        throw std::exception("[LayerStack] Error: Failed to create shading group!");
+        return MStatus::kFailure;
+    }
+
+    // Even if the group already exists, the user may have modified properties, so need to re-init from the latest JSON.
+    if (pShadingGroup->mMaterialRoot)
+    {
+        pShadingGroup->mMaterialRoot->Delete();
+        delete pShadingGroup->mMaterialRoot;
+        pShadingGroup->mMaterialRoot = nullptr;
+    }
+
+    status = pShadingGroup->AssignMaterial(nullptr, materialName);
     LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to assign material to SG");
-    
-    status = shadingGroup.mMaterialRoot->InitFromJSON(jsonComplete, materialName);
+
+    status = pShadingGroup->mMaterialRoot->InitFromJSON(jsonComplete, materialName);
     LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to init default material tree");
 
     // Disconnect the mesh from any existing shading group
     status = DisconnectFromCurrentShadingGroup(shapeNode);
     LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to disconnect " + meshFn.name() + " from current SG");
 
-    // Connect the mesh to the layer stack shading group.
-    status = ConnectToLayeredShadingGroup(shapeNode, shadingGroup);
+    // Connect the mesh to the shading group.
+    status = ConnectToLayeredShadingGroup(shapeNode, *pShadingGroup);
     LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to connect " + meshFn.name() + " to layered SG");
 
     return status;
+}
+
+// Linear search is OK here since there probably won't be too many shading groups
+LayeredShadingGroup* LayerStackCmd::FindShadingGroupForMaterialName(MString& materialName)
+{
+    LayeredShadingGroup* ret = nullptr;
+
+    const char* targetCStr = materialName.asChar();
+    std::string targetStr(targetCStr);
+
+    for (LayeredShadingGroup* group : sShadingGroups)
+    {
+        if (!group || !group->mMaterialRoot)
+            continue;
+
+        // If the surface material name matches, return it so we don't have to create a new one. 
+        if (materialName == group->mMaterialRoot->mInstanceName)
+        {
+            ret = group;
+            break;
+        }
+    }
+
+    return ret;
+}
+
+LayeredShadingGroup* LayerStackCmd::CreateNewShadingGroup(MString& materialName)
+{
+    LayeredShadingGroup* newGroup = new LayeredShadingGroup();
+    sShadingGroups.push_back(newGroup);
+    newGroup->Create(materialName);
+
+    return newGroup;
 }
 

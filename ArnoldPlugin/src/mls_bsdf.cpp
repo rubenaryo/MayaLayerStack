@@ -21,7 +21,8 @@ bsdf_init
     // initialize the BSDF lobes. in this case we just have a single
     // diffuse lobe with no specific flags or label
     static const AtBSDFLobeInfo lobe_info[1] = { 
-        {AI_RAY_DIFFUSE_REFLECT, 0, AtString()}
+        {AI_RAY_SPECULAR_REFLECT, 0, AtString()}
+
     };
     AiBSDFInitLobes(bsdf, lobe_info, 1);
     
@@ -39,10 +40,10 @@ bsdf_sample
         return AI_BSDF_LOBE_MASK_NONE;
 
     // compute coeffs and alphas using adding-doubling
-    AtRGB coeffs[3];
-    float alphas[3];
+    AtRGB coeffs[10];
+    float alphas[10];
     int nb_valid = 0;
-    computeAddingDoubling(cosNO, data->albedos.size(), data->albedos, data->etas, data->kappas, data->alphas, data->depths, data->sigma_a, data->sigma_s,
+    computeAddingDoubling(cosNO, fmin(data->albedos.size(), 10), data->albedos, data->etas, data->kappas, data->alphas, data->depths, data->sigma_a, data->sigma_s,
         coeffs, alphas, nb_valid);
 
     if (nb_valid == 0) {
@@ -114,7 +115,7 @@ bsdf_sample
     
     // indicate that we have valid lobe samples for all the requested lobes,
     // which is just one lobe in this case
-    return lobe_mask;
+    return lobe_mask & LobeMask(out_lobe_index);
 }
 
 bsdf_eval
@@ -136,10 +137,10 @@ bsdf_eval
     float cum_w = 0.0;
 
     // compute coeffs and alphas using adding-doubling
-    AtRGB coeffs[3];
-    float alphas[3];
+    AtRGB coeffs[10];
+    float alphas[10];
     int nb_valid = 0;
-    computeAddingDoubling(cosNO, data->albedos.size(), data->albedos, data->etas, data->kappas, data->alphas, data->depths, data->sigma_a, data->sigma_s,
+    computeAddingDoubling(cosNO, fmin(data->albedos.size(), 10), data->albedos, data->etas, data->kappas, data->alphas, data->depths, data->sigma_a, data->sigma_s,
         coeffs, alphas, nb_valid);
 
     if (nb_valid == 0) {
@@ -162,17 +163,22 @@ bsdf_eval
         const float G = geometrySmith(cosNI, cosNO, a);
         const float G1 = smithShlickGGX(cosNI, a);
 
+        AtRGB f_this = D * G * coeffs[i] / (4.0f * cosNO);
+        float DG1 = D * G1 / (4.0f * cosNO);
+        if (DG1 < 1e-6f || isnan(DG1) || isInvalid(f_this) || average(f_this) > 1e8f) {
+            continue;
+        }
+
         // Add to the contribution
-        f += D * G * coeffs[i] / (4.0f * cosNO);
+        f += f_this;
 
         // pdf
         float weight = average(coeffs[i]);
         cum_w += weight;
-        float DG1 = D * G1 / (4.0f * cosNO);
         pdf += weight * DG1;
     }
 
-    if (cum_w > 0.0f) {
+    if (cum_w > 0.0f && pdf > 1e-6f) {
         pdf /= cum_w;
     }
     else {
@@ -183,7 +189,7 @@ bsdf_eval
     int lobe_index = 0;
     out_lobes[lobe_index] = AtBSDFLobeSample(f / pdf, 0, pdf);
     
-    return lobe_mask;
+    return lobe_mask & LobeMask(lobe_index);
 }
 
 AtBSDF* LayerStackBSDFCreate(const AtShaderGlobals* sg, const LayerStackBSDF& lsbsdf)

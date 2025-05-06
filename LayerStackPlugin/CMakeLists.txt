@@ -19,6 +19,9 @@ file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS
     "src/*.h"
 )
 
+# JSON Library
+include_directories("src/external/nlohmann")
+
 file(GLOB_RECURSE SRC_PY
     "src/Python/*.py"
 )

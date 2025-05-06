@@ -11,6 +11,7 @@ class AEmlsLayerVolumetricTemplate(ShaderAETemplate):
         self.beginLayout('Layer Parameters', collapse=False)
         self.addControl('albedo', label='Albedo')
         self.addControl('depth', label='Depth')
+        self.addControl('g', label='G')
         self.endLayout()
 
         maya.mel.eval('AEdependNodeTemplate '+ self.nodeName)

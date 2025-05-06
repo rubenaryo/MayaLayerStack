@@ -41,14 +41,14 @@
     [attr IOR]
 		min					FLOAT	0.1
 		max					FLOAT	5.0
-		default				FLOAT	0.47
+		default				FLOAT	0.5
 		maya.name			STRING	"IOR"
 		maya.keyable        BOOL    true
 
     [attr kappa]
 		min					FLOAT	0.01
-		max					FLOAT	5.0
-		default				FLOAT	2.9
+		max					FLOAT	10.0
+		default				FLOAT	3.0
 		maya.name			STRING	"kappa"
 		maya.keyable        BOOL    true
 
@@ -94,9 +94,16 @@
 		maya.keyable        BOOL    true
 
     [attr depth]
-		min					FLOAT	0.001
-		max					FLOAT	0.1
-		default				FLOAT	0.01
+		min					FLOAT	0.01
+		max					FLOAT	1.0
+		default				FLOAT	0.1
 		maya.name			STRING	"depth"
+		maya.keyable        BOOL    true
+
+    [attr g]
+		min					FLOAT	0.001
+		max					FLOAT	1.0
+		default				FLOAT	0.7
+		maya.name			STRING	"g"
 		maya.keyable        BOOL    true
     

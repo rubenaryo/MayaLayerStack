@@ -17,8 +17,12 @@ def create_preset_buttons():
         # If we can't get the path directly, try to get the currently executing script
         script_path = mel.eval('getenv("MAYA_SCRIPT_PATH")').split(';')[0]
     
+    global preset_parent_layout
     global preset_dir
     preset_dir = os.path.dirname(script_path)
+    print(preset_dir)
+    preset_dir += "/presets/"
+    print(preset_dir)
     
     # Find all JSON files in the same directory
     json_files = glob.glob(os.path.join(preset_dir, "*.json"))
@@ -35,12 +39,24 @@ def create_preset_buttons():
             cmds.button(
                 label=preset_name,
                 command=lambda x, path=json_file: load_layer_structure(path),
-                #backgroundColor=[0.2, 0.5, 0.7],
+                parent=preset_parent_layout,
                 height=30
             )
     else:
         cmds.text(label="No presets found", align="center")
 
+def refresh_presets(*args):
+    global preset_parent_layout
+    for child in cmds.layout(preset_parent_layout, query=True, childArray=True) or []:
+
+        if child is None:
+            continue
+
+        # Delete the child button 
+        cmds.deleteUI(child)
+        
+    # Rebuild all the child buttons
+    create_preset_buttons()
 
 def create_ui():
     # Check if the window already exists, if so, delete it
@@ -48,7 +64,7 @@ def create_ui():
         cmds.deleteUI("meshSelectionUI")
     
     # Create the main window
-    window = cmds.window("meshSelectionUI", title="Layer Material Controls", width=800, height=500)
+    window = cmds.window("meshSelectionUI", title="Layer Material Controls", width=600, height=400, resizeToFitChildren=True)
     
     # Create the main layout as a form layout
     main_layout = cmds.formLayout(numberOfDivisions=100)
@@ -67,18 +83,14 @@ def create_ui():
     preset_separator = cmds.separator(height=20, style='in', horizontal=True)
     #preset_frame = cmds.frameLayout(label="Material Presets", collapsable=True, collapse=False)
     cmds.text(label="Material Presets", font="boldLabelFont", align="center")
-    #preset_frame = cmds.scrollLayout(height=600, width=200, horizontalScrollBarThickness=0)
-    #cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 5), rowSpacing=5)
-    cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 5), width=250, rowSpacing=3)
+    
+    global preset_parent_layout
+    preset_parent_layout = cmds.columnLayout(adjustableColumn=True, columnAttach=('both', 5), width=250, rowSpacing=3)
 
     create_preset_buttons()
 
-    
     # Exit columnLayout
     cmds.setParent('..')
-
-    # Exit preset_frame
-    #cmds.setParent('..')
 
     # Exit Left Panel
     cmds.setParent('..')
@@ -86,7 +98,9 @@ def create_ui():
     separator1 = cmds.separator(style='in', horizontal=False)
     
     # Right panel is for layer management
-    right_panel = cmds.columnLayout("rightPanel", adjustableColumn=True, columnAttach=('both', 5), width=800, rowSpacing=10)
+    global right_panel_width
+    right_panel_width = 600
+    right_panel = cmds.columnLayout("rightPanel", adjustableColumn=True, columnAttach=('both', 5), width=right_panel_width, rowSpacing=10)
     cmds.text(label="Material Layer Structure", font="boldLabelFont", align="center")
     
     cmds.frameLayout(label="Layer Controls", collapsable=True, collapse=False)
@@ -99,11 +113,11 @@ def create_ui():
     
     # Create a scroll layout for the layer tree visualization
     global layer_tree_scroll
-    layer_tree_scroll = cmds.scrollLayout(horizontalScrollBarThickness=16, verticalScrollBarThickness=16, height=800)
+    layer_tree_scroll = cmds.scrollLayout(horizontalScrollBarThickness=0, verticalScrollBarThickness=16, height=800, width=right_panel_width)
     
     # Create a column layout to hold the layer tree
     global layer_tree_column
-    layer_tree_column = cmds.columnLayout("layerTreeColumn", adjustableColumn=True, columnAttach=('both', 5), width=800, rowSpacing=5)
+    layer_tree_column = cmds.columnLayout("layerTreeColumn", adjustableColumn=True, columnAttach=('both', 5), width=right_panel_width, rowSpacing=5)
     
     refresh_layer_tree_ui()
     
@@ -162,7 +176,7 @@ def add_new_material(*args):
     result = cmds.promptDialog(
         title='New Material',
         message='Enter material name:',
-        text='New Multi-Layer Material',
+        text=f'newMultiLayerMaterial_{layer_counter+1}',
         button=['OK', 'Cancel'],
         defaultButton='OK',
         cancelButton='Cancel',
@@ -171,6 +185,7 @@ def add_new_material(*args):
     
     if result == 'OK':
         material_name = cmds.promptDialog(query=True, text=True)
+        material_name = cleanup_material_name(material_name)
         
         # Create surface node
         layer_counter += 1
@@ -288,11 +303,11 @@ def add_sublayer_add_node(parent_id, *args):
 
 def create_default_params(layer_type):
     if layer_type == "dielectric":
-        return {"IOR": 1.5, "roughness": 0.1}
+        return {"IOR": 0.5, "roughness": 0.0}
     elif layer_type == "volumetric":
-        return {"albedo": [1.0, 1.0, 1.0], "depth": 1.0}
+        return {"albedo": [1.0, 1.0, 1.0], "depth": 0.2, "g": 0.7}
     elif layer_type == "metal":
-        return {"albedo": [0.8, 0.8, 0.8], "IOR": 2.5, "kappa": 1.0, "roughness": 0.1}
+        return {"albedo": [1.0, 1.0, 1.0], "IOR": 0.5, "kappa": 3.0, "roughness": 0.0}
     return {}
 
 def refresh_layer_tree_ui():
@@ -322,10 +337,10 @@ def create_layer_ui(layer_id, indent_level):
     
     # Create frame label based on layer type
     if layer_type == "surface":
-        frame_label = f"Surface: {layer_name}"
+        frame_label = f"[Surface] {layer_name}"
         bg_color = [0.3, 0.3, 0.4]  # Darker color for surface nodes
     elif layer_type == "add":
-        frame_label = f"Add: {layer_name}"
+        frame_label = f"[Add] {layer_name}"
         bg_color = [0.25, 0.25, 0.35]  # Medium color for add nodes
     else:  # Parameter layers
         position_text = ""
@@ -347,7 +362,8 @@ def create_layer_ui(layer_id, indent_level):
     )
     
     # Use a column layout with left margin based on indent level
-    cmds.columnLayout(adjustableColumn=True, columnAttach=('left', 20 * indent_level), width=800, rowSpacing=3)
+    global right_panel_width
+    cmds.columnLayout(adjustableColumn=True, columnAttach=('left', 20 * indent_level), width=right_panel_width, rowSpacing=3)
     
     # Create buttons row based on layer type
     if layer_type == "surface":
@@ -373,7 +389,7 @@ def create_layer_ui(layer_id, indent_level):
         top_layer = layer_tree[layer_id].get("top_layer")
         if top_layer:
             top_name = layer_tree[top_layer]["params"].get("name", "Unnamed")
-            cmds.text(label=f"{layer_tree[top_layer]['type'].capitalize()}: {top_name}")
+            cmds.text(label=f"[{layer_tree[top_layer]['type'].capitalize()}] {top_name}")
         else:
             cmds.button(label="Add Top Layer", command=lambda x, lid=layer_id: add_parameter_layer(lid, "top"))
         cmds.setParent('..')
@@ -384,7 +400,7 @@ def create_layer_ui(layer_id, indent_level):
         bottom_layer = layer_tree[layer_id].get("bottom_layer")
         if bottom_layer:
             bottom_name = layer_tree[bottom_layer]["params"].get("name", "Unnamed")
-            cmds.text(label=f"{layer_tree[bottom_layer]['type'].capitalize()}: {bottom_name}")
+            cmds.text(label=f"[{layer_tree[bottom_layer]['type'].capitalize()}] {bottom_name}")
         else:
             cmds.button(label="Add Bottom Layer", command=lambda x, lid=layer_id: add_parameter_layer(lid, "bottom"))
         cmds.setParent('..')
@@ -425,10 +441,11 @@ def add_parameter_editors(layer_id, *args):
             label='IOR: ',
             value=layer_tree[layer_id]["params"]["IOR"],
             field=True,
-            minValue=1.0,
-            maxValue=3.0,
-            fieldMinValue=1.0,
-            fieldMaxValue=10.0,
+            minValue=0.0,
+            maxValue=5.0,
+            fieldMinValue=0.0,
+            fieldMaxValue=5.0,
+            precision=3,
             changeCommand=lambda val, lid=layer_id: update_param(lid, "IOR", val)
         )
         
@@ -440,6 +457,7 @@ def add_parameter_editors(layer_id, *args):
             field=True,
             minValue=0.0,
             maxValue=1.0,
+            precision=3,
             changeCommand=lambda val, lid=layer_id: update_param(lid, "roughness", val)
         )
         cmds.setParent('..')
@@ -450,6 +468,7 @@ def add_parameter_editors(layer_id, *args):
         
         albedo_slider_name = f"albedoSlider{layer_id}"
         depth_slider_name = f"depthSlider{layer_id}"
+        g_slider_name = f"gSlider{layer_id}"
 
         # Albedo parameter (color)
         cmds.colorSliderGrp(
@@ -468,10 +487,25 @@ def add_parameter_editors(layer_id, *args):
             value=layer_tree[layer_id]["params"]["depth"],
             field=True,
             minValue=0.0,
-            maxValue=10.0,
+            maxValue=1.0,
             fieldMinValue=0.0,
             fieldMaxValue=100.0,
+            precision=2,
             changeCommand=lambda val, lid=layer_id: update_param(lid, "depth", val)
+        )
+
+        # G parameter
+        cmds.floatSliderGrp(
+            g_slider_name,
+            label='G: ',
+            value=layer_tree[layer_id]["params"]["g"],
+            field=True,
+            minValue=0.0,
+            maxValue=1.0,
+            fieldMinValue=0.0,
+            fieldMaxValue=5.0,
+            precision=2,
+            changeCommand=lambda val, lid=layer_id: update_param(lid, "g", val)
         )
         cmds.setParent('..')
         
@@ -493,17 +527,18 @@ def add_parameter_editors(layer_id, *args):
                 layer_tree[layer_id]["params"]["albedo"][2]),
             changeCommand=lambda *args, lid=layer_id: update_color_param(lid, "albedo", albedo_slider_name)
         )
-        
+
         # IOR parameter
         cmds.floatSliderGrp(
             ior_slider_name,
             label='IOR: ',
             value=layer_tree[layer_id]["params"]["IOR"],
             field=True,
-            minValue=1.0,
+            minValue=0.0,
             maxValue=5.0,
-            fieldMinValue=1.0,
-            fieldMaxValue=10.0,
+            fieldMinValue=0.0,
+            fieldMaxValue=5.0,
+            precision=3,
             changeCommand=lambda val, lid=layer_id: update_param(lid, "IOR", val)
         )
         
@@ -514,9 +549,10 @@ def add_parameter_editors(layer_id, *args):
             value=layer_tree[layer_id]["params"]["kappa"],
             field=True,
             minValue=0.0,
-            maxValue=5.0,
+            maxValue=10.0,
             fieldMinValue=0.0,
             fieldMaxValue=10.0,
+            precision=3,
             changeCommand=lambda val, lid=layer_id: update_param(lid, "kappa", val)
         )
         
@@ -528,6 +564,7 @@ def add_parameter_editors(layer_id, *args):
             field=True,
             minValue=0.0,
             maxValue=1.0,
+            precision=3,
             changeCommand=lambda val, lid=layer_id: update_param(lid, "roughness", val)
         )
 
@@ -598,40 +635,32 @@ def apply_function(*args):
     # Get the selected mesh name from the text field
     selected_mesh = cmds.textField("selectedMeshField", query=True, text=True)
     
-    # Check if a mesh is selected
-    if selected_mesh:
-        if not layer_tree["root"]["children"]:
-            cmds.warning("No materials defined. Please add at least one layer.")
-            return
-            
-        validation_errors = validate_layer_tree()
-        if validation_errors:
-            cmds.confirmDialog(
-                title="Structure Validation Failed", 
-                message=f"The material structure has the following issues:\n\n{validation_errors}",
-                button=["OK"]
-            )
-            return
-        
-        print("Applying material stack to mesh: {}".format(selected_mesh))
-        print("Layer structure:")
-        #print(json.dumps(layer_tree, indent=2))
+    try:
+        # Check if a mesh is selected
+        if selected_mesh:
+            if not layer_tree["root"]["children"]:
+                cmds.warning("No materials defined. Please add at least one layer.")
+                return
+                
+            validation_errors = validate_layer_tree()
+            if validation_errors:
+                cmds.confirmDialog(
+                    title="Structure Validation Failed", 
+                    message=f"The material structure has the following issues:\n\n{validation_errors}",
+                    button=["OK"]
+                )
+                return
 
-        json_tree = json.dumps(layer_tree)
-        print(json_tree)
-        #cmds.displayInfo(f"[PYTHON] {json_tree}")
+            json_tree = json.dumps(layer_tree)
 
-        first_material = layer_tree["root"]["children"][0]
-        first_material_name = layer_tree[first_material]["params"]["name"]
-        cmds.applyMultiLayerMaterial(selected_mesh, json_tree, first_material_name)
-
-        try:
-            #cmds.confirmDialog(title="Success", message=f"Applied material {first_material_name} to {selected_mesh}", button=["OK"])
-            cmds.confirmDialog(title="Success", message="Applied material to mesh", button=["OK"])
-        except Exception as e:
-            cmds.error("Error applying material: {}".format(str(e)))
-    else:
-        cmds.warning("No mesh selected. Please select a mesh first.")
+            first_material = layer_tree["root"]["children"][0]
+            first_material_name = layer_tree[first_material]["params"]["name"]
+            first_material_name = cleanup_material_name(first_material_name)
+            cmds.applyMultiLayerMaterial(selected_mesh, json_tree, first_material_name)
+        else:
+            cmds.warning("No mesh selected. Please select a mesh first.")
+    except Exception as e:
+        cmds.confirmDialog(title="LayerStack Error", message="{}".format(str(e)), button=["OK"])
 
 def validate_layer_tree():
     """Validate the layer tree structure for completeness"""
@@ -658,15 +687,20 @@ def validate_layer_tree():
     return "\n".join(errors)
 
 def save_layer_structure(*args):
-    file_path = cmds.fileDialog2(fileFilter="JSON Files (*.json)", dialogStyle=2, fileMode=0, caption="Save Layer Structure")
+    global preset_dir
+
+    file_path = cmds.fileDialog2(fileFilter="JSON Files (*.json)", dialogStyle=2, fileMode=0, caption="Save Layer Structure", startingDirectory=preset_dir)
     
     if file_path:
         try:
             with open(file_path[0], 'w') as file:
                 json.dump(layer_tree, file, indent=2)
             cmds.confirmDialog(title="Success", message="Layer structure saved successfully", button=["OK"])
+            refresh_layer_tree_ui()
         except Exception as e:
             cmds.error("Error saving layer structure: {}".format(str(e)))
+
+    refresh_presets()
 
 def load_from_file(*args):
     global preset_dir
@@ -690,6 +724,8 @@ def load_layer_structure(file_path):
                     return
                 
                 layer_tree = loaded_tree
+
+                print("Check0")
                 
                 # Update the layer counter to be higher than any existing layer id
                 for layer_id in layer_tree:
@@ -708,3 +744,6 @@ def load_layer_structure(file_path):
 def cleanup_ui():
     if cmds.window("meshSelectionUI", exists=True):
         cmds.deleteUI("meshSelectionUI")
+
+def cleanup_material_name(material_name):
+    return material_name.replace(" ", "").replace("-", "")

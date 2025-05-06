@@ -30,17 +30,18 @@ MStatus ExecuteNodeCreation(NodeType t, MString& outName, const char* pDesiredNa
 MString GetNodeTypeOutputParamName(NodeType t);
 size_t GetNodeTypeChildCount(NodeType t);
 
-// Really only an instance name..
 struct LayeredMaterialNode
 {
 	LayeredMaterialNode(NodeType t);
 	~LayeredMaterialNode();
 
 	MStatus Create(const char* pDesiredName = nullptr);
+	MStatus Delete();
+	void Reset();
 
 	MStatus InitDefaultMaterialTree();
 	MStatus InitFromJSON(MString& jsonData, MString& desiredMaterialName);
-	MStatus InitChildrenFromJSON(nlohmann::json& jsonData, nlohmann::json& parent);
+	MStatus InitChildrenFromJSON(nlohmann::json& jsonData, nlohmann::json& parent, const std::string& rootMaterialName);
 	MStatus SetChild(NodeChildIndex index, LayeredMaterialNode* pChild);
 	MStatus SetParamsFromJSON(nlohmann::json& paramsStruct);
 
@@ -51,6 +52,7 @@ struct LayeredMaterialNode
 	NodeType mType;
 	size_t mChildrenCount;
 	size_t mChildrenCapacity;
+	bool bCreated;
 };
 
 MStatus LinkNodes(LayeredMaterialNode& parent, LayeredMaterialNode& child, NodeChildIndex childIndex);

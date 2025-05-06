@@ -73,6 +73,8 @@ MStatus uninitializePlugin( MObject obj)
     // Cleanup menu item.
     removeMenuItem();
 
+    LayerStackCmd::CleanupShadingGroups();
+
     status = plugin.deregisterCommand( LayerStackCmd::name() );
     if (!status) {
 	    status.perror("deregisterCommand");
