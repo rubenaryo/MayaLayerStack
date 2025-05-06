@@ -724,8 +724,6 @@ def load_layer_structure(file_path):
                     return
                 
                 layer_tree = loaded_tree
-
-                print("Check0")
                 
                 # Update the layer counter to be higher than any existing layer id
                 for layer_id in layer_tree:
