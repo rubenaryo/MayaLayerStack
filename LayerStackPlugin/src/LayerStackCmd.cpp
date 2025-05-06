@@ -1,5 +1,6 @@
 #include "LayerStackCmd.h"
-#include "ArnoldUtils.h"
+#include "LayeredMaterialNode.h"
+#include "LayeredShadingGroup.h"
 
 #include <maya/MArgList.h>
 #include <maya/MFnMesh.h>
@@ -10,6 +11,22 @@
 #include <maya/MGlobal.h>
 #include <maya/MDagPath.h>
 #include <maya/MFnAttribute.h>
+
+#include "external/nlohmann/json.hpp"
+
+// Global, static state. For simplicity..
+std::vector<LayeredShadingGroup*> sShadingGroups;
+void LayerStackCmd::CleanupShadingGroups()
+{
+    for (LayeredShadingGroup* group : sShadingGroups)
+    {
+        if (!group)
+            continue;
+
+        delete group;
+    }
+    sShadingGroups.clear();
+}
 
 // Stolen from Maya Code, but added a custom log message
 #define LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(_status, _logMsg)		\
@@ -22,9 +39,6 @@
 		return (_status);								\
 	}													\
 }
-
-static const MString LAYER_STACK_MATERIAL_NAME = "LayerStackMaterial";
-static const MString LAYER_STACK_GROUP_NAME = "LayerStackShadingGroup";
 
 MStatus DebugPrintAttributes(MFnDependencyNode& fn)
 {
@@ -66,126 +80,12 @@ MStatus GetShapeNodeFromSelection(const MString& selection, MObject& out_shapeNo
     return status;
 }
 
-MStatus CreateBlinnMaterial(MObject& out_materialObj)
-{
-    // TODO: Load custom arnold material.
-    MStatus status;
-
-    MObject shaderObj;
-
-    static bool USE_CPP = false;
-    if (USE_CPP)
-    {
-        MDGModifier dgModifier;
-        //shaderObj = dgModifier.createNode("simpleShader", &status);
-        shaderObj = dgModifier.createNode("aiLayerstack", &status);
-
-        status = dgModifier.doIt();
-        LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to create material");
-    }
-    else
-    {
-        // Create the custom shader node using MEL
-        MString createShaderCmd = "createNode mlsLayeredSurface -n " + LAYER_STACK_MATERIAL_NAME;
-        MGlobal::displayInfo("Executing command: " + createShaderCmd);
-        status = MGlobal::executeCommand(createShaderCmd);
-        if (!status) {
-            MGlobal::displayError("Failed to create custom shader node");
-            return status;
-        }
-
-        MObject result;
-        MSelectionList selList;
-        selList.add(LAYER_STACK_MATERIAL_NAME);
-        status = selList.getDependNode(0, result);
-        LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to find shader node for query: mySimpleShader");
-
-        shaderObj = result;
-    }
-
-    //MFnDependencyNode shaderFn(shaderObj);
-    //MString name = shaderFn.setName(LAYER_STACK_MATERIAL_NAME, false, &status);
-    //LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to rename material");
-
-    // Set the color to red
-    //status = MGlobal::executeCommand("setAttr \"" + LAYER_STACK_MATERIAL_NAME + ".color\" -type double3 1.0 0 0.0 ;;");
-
-    out_materialObj = shaderObj;
-    return status;
-}
-
-MStatus CreateLayeredShadingGroup(MObject& materialObj, MObject& out_sgObj)
-{
-    MStatus status;
-    MString cmd;
-    MFnDependencyNode shaderFn(materialObj);
-    MString sgName = LAYER_STACK_GROUP_NAME;
-
-    // This part is horrible, it's just easier to use MEL....
-    cmd = "sets -renderable true -noSurfaceShader true -empty -name " + sgName + ";";
-    MGlobal::displayInfo("Executing command: " + cmd);
-    status = MGlobal::executeCommand(cmd);
-    LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to create " + sgName);
-
-    cmd = "connectAttr -f " + shaderFn.name() + ".outColor " + sgName + ".surfaceShader";
-    MGlobal::displayInfo("Executing command: " + cmd);
-    status = MGlobal::executeCommand(cmd);
-    LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to link " + shaderFn.name() + ".outColor and " + sgName + ".surfaceShader");
-
-    // Lookup MObject
-    MObject lookupResult;
-    MSelectionList selList;
-    selList.add(sgName);
-    status = selList.getDependNode(0, lookupResult);
-    if (status != MStatus::kSuccess) {
-        MGlobal::displayError("Couldn't find shadingGroup: " + sgName);
-        return status;
-    }
-
-    out_sgObj = lookupResult;
-    return status;
-}
-
-MStatus GetLayerStackMaterialAndShadingGroup(MObject& out_materialObj, MObject& out_shadingGroupObj)
-{
-    // LayerStack will lazily initialize the material and shading group. This is a good way to ensure consistency across plugin load/unload.
-
-    MStatus status;
-
-    // Lookup by name
-    MObject materialObj;
-    MSelectionList selList;
-    selList.add(LAYER_STACK_MATERIAL_NAME);
-    status = selList.getDependNode(0, materialObj);
-    if (status != MStatus::kSuccess) {
-        MGlobal::displayInfo("Did not find existing layer stack material " + LAYER_STACK_MATERIAL_NAME + ". Creating it now...");
-        
-        // TODO: Load custom arnold material.
-        status = CreateBlinnMaterial(materialObj);
-        LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to create Blinn Material");
-    }
-    
-    MObject shadingGroupObj;
-    MSelectionList sgSelList;
-    sgSelList.add(LAYER_STACK_GROUP_NAME);
-    status = sgSelList.getDependNode(0, shadingGroupObj);
-    if (status != MStatus::kSuccess) {
-        MGlobal::displayInfo("Did not find existing layer stack shading group " + LAYER_STACK_GROUP_NAME + ". Creating it now...");
-
-        status = CreateLayeredShadingGroup(materialObj, shadingGroupObj);
-        LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to create " + LAYER_STACK_GROUP_NAME);
-    }
-
-    out_materialObj = materialObj;
-    out_shadingGroupObj = shadingGroupObj;
-    return status;
-}
-
 MStatus DisconnectFromCurrentShadingGroup(MObject& shapeObj)
 {
     MStatus status;
-
     MFnMesh meshFn(shapeObj, &status);
+#define USE_CPP 0 
+#if USE_CPP
 
     MDGModifier dgModifier;
     MFnDagNode meshDagNode(shapeObj);
@@ -219,20 +119,29 @@ MStatus DisconnectFromCurrentShadingGroup(MObject& shapeObj)
             }
         }
     }
+#else
+    MString findShadingGroupsCmd = "listConnections -destination true -type \"shadingEngine\" " + meshFn.name() + ";";
+    MStringArray shadingGroupNameResult;
+    status = MGlobal::executeCommand(findShadingGroupsCmd, shadingGroupNameResult);
+
+    if (shadingGroupNameResult.length() > 0)
+    {
+        MString shadingGroupName = shadingGroupNameResult[0];
+        MString disconnectShadingGroupCmd = "sets -rm " + shadingGroupName + " " + meshFn.name();
+        MGlobal::executeCommand(disconnectShadingGroupCmd, true);
+    }
+#endif
 
     return status;
 }
 
-MStatus ConnectToLayeredShadingGroup(MObject& shapeObj, MObject& sgObj)
+MStatus ConnectToLayeredShadingGroup(MObject& shapeObj, LayeredShadingGroup& shadingGroup)
 {
     MStatus status;
-
     MFnMesh meshFn(shapeObj, &status);
-    MFnSet sgDagNode(sgObj);
-    MString sgName = LAYER_STACK_GROUP_NAME;
 
-    MString cmd = "connectAttr -f " + meshFn.name() + ".instObjGroups[0] " + sgName + ".dagSetMembers[0]";
-    MGlobal::displayInfo("Executing command: " + cmd);
+    //MString cmd = "connectAttr -f " + meshFn.name() + ".instObjGroups[0] " + shadingGroup.mName + ".dagSetMembers[0]";
+    MString cmd = "sets -addElement " + shadingGroup.mName + " " + meshFn.name();
     return MGlobal::executeCommand(cmd);
 }
 
@@ -246,41 +155,107 @@ LayerStackCmd::~LayerStackCmd()
 
 MStatus LayerStackCmd::doIt( const MArgList& args )
 {
+    using json = nlohmann::json;
     MStatus status;
 
-    if (args.length() < 1)
+    if (args.length() < 3)
     {
-        MGlobal::displayError("You must pass a mesh as an argument.");
+        MGlobal::displayError("You must pass the mesh, the json structure, and the desired material as an argument.");
         return MS::kFailure;
     }
 
     // Get the mesh name passed as an argument
     MString selectedStr = args.asString(0);
+    MString jsonComplete = args.asString(1);
+    MString materialName = args.asString(2);
+    const char* testName = materialName.asChar();
+    const wchar_t* testName2 = materialName.asWChar();
 
     // Look up the shape node from the name
     MObject shapeNode;
     status = GetShapeNodeFromSelection(selectedStr, shapeNode);
     LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to fetch shape node from selection: " + selectedStr);
 
-    // Load custom arnold shader
-    MString arnoldShaderPath = "C:/Users/Ruben/Code/CIS6600/AuthoringTool/MayaLayerStack/ArnoldPlugin/x64/Debug/ArnoldPlugin.dll";
-    
     MFnMesh meshFn(shapeNode);
 
-    MObject blinnObj;
-    MObject layeredSGObj;
+    LayeredShadingGroup* pShadingGroup = FindShadingGroupForMaterialName(materialName);
+    if (pShadingGroup)
+    {
+        MGlobal::displayInfo("[LayerStack] Found existing shading group: " + pShadingGroup->mName + "\n");
+    }
 
-    // Will lazily init the material and shading group if they do not exist yet.
-    status = GetLayerStackMaterialAndShadingGroup(blinnObj, layeredSGObj);
+    if (!pShadingGroup)
+    {
+        // Need to create a new one.
+        pShadingGroup = CreateNewShadingGroup(materialName);
+        if (!pShadingGroup)
+        {
+            MGlobal::displayError("[LayerStack] Fatal Error: Failed to allocate new shading group");
+            return MStatus::kFailure;
+        }
+    }
+
+    if (!pShadingGroup)
+    {
+        throw std::exception("[LayerStack] Error: Failed to create shading group!");
+        return MStatus::kFailure;
+    }
+
+    // Even if the group already exists, the user may have modified properties, so need to re-init from the latest JSON.
+    if (pShadingGroup->mMaterialRoot)
+    {
+        pShadingGroup->mMaterialRoot->Delete();
+        delete pShadingGroup->mMaterialRoot;
+        pShadingGroup->mMaterialRoot = nullptr;
+    }
+
+    status = pShadingGroup->AssignMaterial(nullptr, materialName);
+    LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to assign material to SG");
+
+    status = pShadingGroup->mMaterialRoot->InitFromJSON(jsonComplete, materialName);
+    LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to init default material tree");
 
     // Disconnect the mesh from any existing shading group
     status = DisconnectFromCurrentShadingGroup(shapeNode);
     LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to disconnect " + meshFn.name() + " from current SG");
 
-    // Connect the mesh to the layer stack shading group.
-    status = ConnectToLayeredShadingGroup(shapeNode, layeredSGObj);
+    // Connect the mesh to the shading group.
+    status = ConnectToLayeredShadingGroup(shapeNode, *pShadingGroup);
     LAYERSTACK_CHECK_STATUS_LOG_AND_RETURN(status, "Failed to connect " + meshFn.name() + " to layered SG");
 
     return status;
+}
+
+// Linear search is OK here since there probably won't be too many shading groups
+LayeredShadingGroup* LayerStackCmd::FindShadingGroupForMaterialName(MString& materialName)
+{
+    LayeredShadingGroup* ret = nullptr;
+
+    const char* targetCStr = materialName.asChar();
+    std::string targetStr(targetCStr);
+
+    for (LayeredShadingGroup* group : sShadingGroups)
+    {
+        if (!group || !group->mMaterialRoot)
+            continue;
+
+        // If the surface material name matches, return it so we don't have to create a new one. 
+        if (materialName == group->mMaterialRoot->mInstanceName)
+        {
+            ret = group;
+            break;
+        }
+    }
+
+    return ret;
+}
+
+LayeredShadingGroup* LayerStackCmd::CreateNewShadingGroup(MString& materialName)
+{
+    LayeredShadingGroup* newGroup = new LayeredShadingGroup();
+    sShadingGroups.push_back(newGroup);
+    newGroup->Create(materialName);
+
+    return newGroup;
 }
 

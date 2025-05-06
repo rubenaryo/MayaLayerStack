@@ -17,6 +17,10 @@ inline T sqr(T x) {
     return x * x;
 }
 
+inline bool isInvalid(AtRGB c) {
+	return (c.r < 0 || c.g < 0 || c.b < 0 || isnan(c.r) || isnan(c.g) || isnan(c.b));
+}
+
 inline AtVector2 ToConcentricDisk(AtVector2 uv) {
 	if (uv.x == 0.0f && uv.y == 0.0f)
 		return AtVector2(0.f, 0.f);
@@ -53,6 +57,10 @@ inline AtBSDFLobeMask LobeMask(int idx) {
     return 1 << idx;
 }
 
+inline AtRGB AiRGBExp(const AtRGB& c) {
+	return AtRGB(expf(c.r), expf(c.g), expf(c.b));
+}
+
 inline float roughnessToVariance(float a) {
 #ifdef USE_BEST_FIT
     a = _clamp<float>(a, 0.0, 0.9999);
@@ -69,6 +77,17 @@ inline float varianceToRoughness(float v) {
 #else
     return v / (1.0f + v);
 #endif
+}
+
+inline float gToVariance(float g) {
+	g = _clamp<float>(g, 0.0001, 1.0);
+	return powf((1 - g) / g, 0.8f) / (1 + g);
+}
+
+inline void computeSigma(AtRGB albedo, float ld, AtRGB& sigma_a, AtRGB& sigma_s) {
+	AtRGB sigma_t = AtRGB(1 / ld);
+	sigma_s = albedo * sigma_t;
+	sigma_a = sigma_t - sigma_s;
 }
 
 struct Vec2c

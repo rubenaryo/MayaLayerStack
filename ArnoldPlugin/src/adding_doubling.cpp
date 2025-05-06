@@ -1,4 +1,5 @@
 #include "util.h"
+#include "ppmimage.h"
 #include <fstream>
 
 struct TIR {
@@ -117,6 +118,8 @@ public:
 };
 
 TIR m_TIR("TIR.bin");
+//BMPImage Ess((getDllDirectory() / "Ess.bmp").string());
+PPMImage Ess("E:/CIS6600_/SIG_TOOL/plugin/Ess.ppm");
 
 float fresnelDielectric(float cosTi, float eta) {
     cosTi = AiClamp(cosTi, -1.f, 1.f);
@@ -138,24 +141,49 @@ float fresnelDielectric(float cosTi, float eta) {
     return (rPa * rPa + rPe * rPe) * .5f;
 }
 
-float fresnelConductor(float cosI, float eta, float k) {
-    Vec2c etak(eta, k);
-    Vec2c cosThetaI(AiClamp(cosI, 0.f, 1.f), 0.f);
+//float fresnelConductor(float cosI, float eta, float k) {
+//    Vec2c etak(eta, k);
+//    Vec2c cosThetaI(AiClamp(cosI, 0.f, 1.f), 0.0);
+//
+//    Vec2c sin2ThetaI(1.f - cosThetaI.LengthSqr(), 0.0);
+//    Vec2c sin2ThetaT = sin2ThetaI / (etak * etak);
+//    Vec2c cosThetaT = (Vec2c(1.f, 0.f) - sin2ThetaT).Sqrt();
+//
+//    Vec2c rPa = (etak * cosThetaI - cosThetaT) / (etak * cosThetaI + cosThetaT);
+//    Vec2c rPe = (cosThetaI - etak * cosThetaT) / (cosThetaI + etak * cosThetaT);
+//    return (rPa.LengthSqr() + rPe.LengthSqr()) * .5f;
+//}
 
-    Vec2c sin2ThetaI(1.f - cosThetaI.LengthSqr(), 0.f);
-    Vec2c sin2ThetaT = sin2ThetaI / (etak * etak);
-    Vec2c cosThetaT = (Vec2c(1.f, 0.f) - sin2ThetaT).Sqrt();
+float fresnelConductor(float CosTheta, float Eta, float Etak)
+{
+    float CosTheta2 = std::clamp(CosTheta * CosTheta, 0.0f, 1.0f);
+    float SinTheta2 = std::clamp(1 - CosTheta2, 0.0f, 1.0f);
+    float Eta2 = Eta * Eta;
+    float Etak2 = Etak * Etak;
 
-    Vec2c rPa = (etak * cosThetaI - cosThetaT) / (etak * cosThetaI + cosThetaT);
-    Vec2c rPe = (cosThetaI - etak * cosThetaT) / (cosThetaI + etak * cosThetaT);
-    return (rPa.LengthSqr() + rPe.LengthSqr()) * .5f;
+    float t0 = Eta2 - Etak2 - SinTheta2;
+    float a2plusb2 = sqrt(t0 * t0 + 4 * Eta2 * Etak2);
+    float t1 = a2plusb2 + CosTheta2;
+    float a = sqrt(std::max(0.5f * (a2plusb2 + t0), 0.0f));
+    float t2 = 2 * a * std::clamp(CosTheta, 0.0f, 1.0f);
+    float Rs = (t1 - t2) / (t1 + t2);
+
+    float t3 = CosTheta2 * a2plusb2 + SinTheta2 * SinTheta2;
+    float t4 = t2 * SinTheta2;
+    float Rp = Rs * (t3 - t4) / (t3 + t4);
+
+    return 0.5 * (Rp + Rs);
 }
 
 void evalFresnel(float ct, const AtRGB& albedo, float alpha, float eta, float kappa,
     AtRGB& Rij, AtRGB& Tij) {
-    Rij = (kappa == 0.0f) ? fresnelDielectric(ct, eta) * AtRGB(1.0f) :
-        albedo * fresnelConductor(ct, eta, kappa);
-    Tij = (kappa == 0.0f) ? (AtRGB(1.0) - Rij) * albedo : AtRGB(0.0);
+    float fresnel = (kappa == 0.0f) ? fresnelDielectric(ct, eta) :
+        fresnelConductor(ct, eta, kappa);
+    Rij = (kappa == 0.0f) ? fresnel * AtRGB(1.0f) :
+        albedo * fresnel / (sqr(1 - eta) + sqr(kappa)) * (sqr(1 + eta) + sqr(kappa));
+    float ess = (Ess.getPixel(abs(ct), alpha).r)/255.f;
+    Rij *= (1 + fresnel * (1 - ess) / ess);
+    Tij = (kappa == 0.0f) ? (AtRGB(1.0) - Rij): AtRGB(0.0);
 }
 
 void computeAddingDoubling(
@@ -164,6 +192,9 @@ void computeAddingDoubling(
     const std::vector<float>& m_etas,
     const std::vector<float>& m_kappas,
     const std::vector<float>& m_alphas,
+    const std::vector<float>& m_depths,
+    const std::vector<AtRGB>& m_sigma_a,
+    const std::vector<AtRGB>& m_sigma_s,
     AtRGB* coeffs,
     float* alphas, 
     int &nb_valid) {
@@ -185,25 +216,27 @@ void computeAddingDoubling(
         float kappa = kappa_2 / eta_1;
         float alpha = m_alphas[i];
         float n12 = eta;
-        // float depth = m_depths[i];
-        float depth = 0.0f;
+        float depth = m_depths[i];
+        //float depth = 0.0f;
 
         AtRGB R12, T12, R21, T21;
         float s_r12 = 0.0f, s_r21 = 0.0f, s_t12 = 0.0f, s_t21 = 0.0f, j12 = 1.0f, j21 = 1.0f, ctt;
         if (depth > 0.0f) {
-            ///* Mean doesn't change with volumes */
-            //ctt = cti;
+            /* Mean doesn't change with volumes */
+            ctt = cti;
 
-            ///* Evaluate transmittance */
-            //const Spectrum sigma_t = m_sigma_a[i] + m_sigma_s[i];
-            //T12 = (Spectrum(1.0f) + m_sigma_s[i] * depth / ctt) * (-(depth / ctt) * sigma_t).exp();
-            //T21 = T12;
-            //R12 = Spectrum(0.0f);
-            //R21 = Spectrum(0.0f);
+            /* Evaluate transmittance */
+            const AtRGB sigma_t = m_sigma_a[i] + m_sigma_s[i];
+            T12 = (AtRGB(1.0f) + m_sigma_s[i] * depth / ctt) * AiRGBExp(-(depth / ctt) * sigma_t);
+            //T12 = (AtRGB(1.0f) + AtRGB(100.0F) * 0.001f / ctt) * AiRGBExp(-(0.001F / ctt) * AtRGB(100.F));
+            //T12 = AtRGB(1.0f);
+            T21 = T12;
+            R12 = AtRGB(0.0f);
+            R21 = AtRGB(0.0f);
 
-            ///* Fetch precomputed variance for HG phase function */
-            //s_t12 = alpha;
-            //s_t21 = alpha;
+            /* Fetch precomputed variance for HG phase function */
+            s_t12 = alpha * depth * 0.25;
+            s_t21 = alpha * depth * 0.25;
 
         }
         else {
@@ -246,7 +279,6 @@ void computeAddingDoubling(
             if (has_transmissive) {
                 R21 = R12;
                 T21 = T12 /* (n12*n12) */; // We don't need the IOR scaling since we are
-                T12 = T12 /* (n12*n12) */; // computing reflectance only here.
             }
             else {
                 R21 = AtRGB(0.0f);
