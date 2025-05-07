@@ -1,0 +1,59 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      "layer_1"
+    ]
+  },
+  "layer_1": {
+    "type": "surface",
+    "parent": "root",
+    "children": [
+      "layer_2"
+    ],
+    "params": {
+      "name": "RoughGoldDielectric"
+    }
+  },
+  "layer_2": {
+    "type": "add",
+    "parent": "layer_1",
+    "children": [
+      "layer_3",
+      "layer_4"
+    ],
+    "params": {
+      "name": "Add_2"
+    },
+    "top_layer": "layer_3",
+    "bottom_layer": "layer_4"
+  },
+  "layer_3": {
+    "type": "dielectric",
+    "parent": "layer_2",
+    "children": [],
+    "params": {
+      "IOR": 1.5,
+      "roughness": 0.001,
+      "name": "DielectricLayer"
+    },
+    "position": "top"
+  },
+  "layer_4": {
+    "type": "metal",
+    "parent": "layer_2",
+    "children": [],
+    "params": {
+      "albedo": [
+        0.953000009059906,
+        0.7210000157356262,
+        0.5040000081062317
+      ],
+      "IOR": 0.654,
+      "kappa": 2.666,
+      "roughness": 0.3,
+      "name": "GoldLayer"
+    },
+    "position": "bottom"
+  }
+}

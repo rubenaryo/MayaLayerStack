@@ -1,0 +1,112 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      "layer_9"
+    ]
+  },
+  "layer_9": {
+    "type": "surface",
+    "parent": "root",
+    "children": [
+      "layer_10"
+    ],
+    "params": {
+      "name": "CarPearlPaint"
+    }
+  },
+  "layer_10": {
+    "type": "add",
+    "parent": "layer_9",
+    "children": [
+      "layer_11",
+      "layer_16"
+    ],
+    "params": {
+      "name": "Add_10"
+    },
+    "top_layer": "layer_11",
+    "bottom_layer": "layer_16"
+  },
+  "layer_11": {
+    "type": "add",
+    "parent": "layer_10",
+    "children": [
+      "layer_12",
+      "layer_15"
+    ],
+    "params": {
+      "name": "Add_11"
+    },
+    "top_layer": "layer_12",
+    "bottom_layer": "layer_15"
+  },
+  "layer_12": {
+    "type": "add",
+    "parent": "layer_11",
+    "children": [
+      "layer_13",
+      "layer_14"
+    ],
+    "params": {
+      "name": "Add_12"
+    },
+    "top_layer": "layer_13",
+    "bottom_layer": "layer_14"
+  },
+  "layer_13": {
+    "type": "dielectric",
+    "parent": "layer_12",
+    "children": [],
+    "params": {
+      "IOR": 1.5,
+      "roughness": 0.002,
+      "name": "Dielectric0"
+    },
+    "position": "top"
+  },
+  "layer_14": {
+    "type": "dielectric",
+    "parent": "layer_12",
+    "children": [],
+    "params": {
+      "IOR": 0.5,
+      "roughness": 0.0,
+      "name": "Dielectric1"
+    },
+    "position": "bottom"
+  },
+  "layer_15": {
+    "type": "volumetric",
+    "parent": "layer_11",
+    "children": [],
+    "params": {
+      "albedo": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "depth": 0.1,
+      "g": 0.7,
+      "name": "Volumetric0"
+    },
+    "position": "bottom"
+  },
+  "layer_16": {
+    "type": "metal",
+    "parent": "layer_10",
+    "children": [],
+    "params": {
+      "albedo": [
+        1.0,
+        0.699999988079071,
+        0.699999988079071
+      ],
+      "IOR": 0.2,
+      "kappa": 5.0,
+      "roughness": 0.8,
+      "name": "InteriorMetal"
+    },
+    "position": "bottom"
+  }
+}

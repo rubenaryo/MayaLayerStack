@@ -1,0 +1,88 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      "layer_1"
+    ]
+  },
+  "layer_1": {
+    "type": "surface",
+    "parent": "root",
+    "children": [
+      "layer_2"
+    ],
+    "params": {
+      "name": "ExamplePreset"
+    }
+  },
+  "layer_2": {
+    "type": "add",
+    "parent": "layer_1",
+    "children": [
+      "layer_3",
+      "layer_4"
+    ],
+    "params": {
+      "name": "Add_2"
+    },
+    "top_layer": "layer_3",
+    "bottom_layer": "layer_4"
+  },
+  "layer_3": {
+    "type": "volumetric",
+    "parent": "layer_2",
+    "children": [],
+    "params": {
+      "albedo": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "depth": 0.15238095196407467,
+      "g": 0.800000000372529,
+      "name": "VolumetricLayer"
+    },
+    "position": "top"
+  },
+  "layer_4": {
+    "type": "add",
+    "parent": "layer_2",
+    "children": [
+      "layer_5",
+      "layer_6"
+    ],
+    "params": {
+      "name": "Add_4"
+    },
+    "top_layer": "layer_5",
+    "bottom_layer": "layer_6"
+  },
+  "layer_5": {
+    "type": "dielectric",
+    "parent": "layer_4",
+    "children": [],
+    "params": {
+      "IOR": 1.5614035102751171,
+      "roughness": 0.5333333332712452,
+      "name": "Dielectric"
+    },
+    "position": "top"
+  },
+  "layer_6": {
+    "type": "metal",
+    "parent": "layer_4",
+    "children": [],
+    "params": {
+      "albedo": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "IOR": 1.1228070196189117,
+      "kappa": 2.315789474762584,
+      "roughness": 0.0,
+      "name": "MetalLayer"
+    },
+    "position": "bottom"
+  }
+}

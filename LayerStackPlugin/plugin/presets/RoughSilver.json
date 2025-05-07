@@ -1,0 +1,59 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      "layer_5"
+    ]
+  },
+  "layer_5": {
+    "type": "surface",
+    "parent": "root",
+    "children": [
+      "layer_6"
+    ],
+    "params": {
+      "name": "RoughSilver"
+    }
+  },
+  "layer_6": {
+    "type": "add",
+    "parent": "layer_5",
+    "children": [
+      "layer_7",
+      "layer_8"
+    ],
+    "params": {
+      "name": "Add_6"
+    },
+    "top_layer": "layer_7",
+    "bottom_layer": "layer_8"
+  },
+  "layer_7": {
+    "type": "dielectric",
+    "parent": "layer_6",
+    "children": [],
+    "params": {
+      "IOR": 1.5,
+      "roughness": 0.001,
+      "name": "DielectricLayer"
+    },
+    "position": "top"
+  },
+  "layer_8": {
+    "type": "metal",
+    "parent": "layer_6",
+    "children": [],
+    "params": {
+      "albedo": [
+        0.9660000205039978,
+        0.9490000009536743,
+        0.921999990940094
+      ],
+      "IOR": 0.149,
+      "kappa": 3.286,
+      "roughness": 0.3,
+      "name": "SilverLayer"
+    },
+    "position": "bottom"
+  }
+}

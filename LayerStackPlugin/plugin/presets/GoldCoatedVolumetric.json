@@ -1,0 +1,64 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      "layer_1"
+    ]
+  },
+  "layer_1": {
+    "type": "surface",
+    "parent": "root",
+    "children": [
+      "layer_2"
+    ],
+    "params": {
+      "name": "GoldCoatedVolumetric"
+    }
+  },
+  "layer_2": {
+    "type": "add",
+    "parent": "layer_1",
+    "children": [
+      "layer_3",
+      "layer_4"
+    ],
+    "params": {
+      "name": "Add_2"
+    },
+    "top_layer": "layer_3",
+    "bottom_layer": "layer_4"
+  },
+  "layer_3": {
+    "type": "volumetric",
+    "parent": "layer_2",
+    "children": [],
+    "params": {
+      "albedo": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "depth": 0.2,
+      "g": 0.7,
+      "name": "VolumetricLayer"
+    },
+    "position": "top"
+  },
+  "layer_4": {
+    "type": "metal",
+    "parent": "layer_2",
+    "children": [],
+    "params": {
+      "albedo": [
+        0.9580000042915344,
+        0.7759999632835388,
+        0.37299999594688416
+      ],
+      "IOR": 0.654,
+      "kappa": 2.666,
+      "roughness": 0.0015,
+      "name": "GoldLayer"
+    },
+    "position": "bottom"
+  }
+}
