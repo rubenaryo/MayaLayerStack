@@ -13,9 +13,9 @@ Download the layer_stack_ui.py file and place it in <devkit path>/plug-ins/scrip
 
 Arnold Side: Download the contents from the MayaLayerStack/ArnoldPlugin/plugin/ folder and place it in the directory pointed at by the ARNOLD_PLUGIN_PATH environment variable.
 
-	_At this point, after opening Maya’s hypershade window (Windows/Rendering Editors/Hypershade…) you should see the mlsLayer* materials when searching for them._
+_At this point, after opening Maya’s hypershade window (Windows/Rendering Editors/Hypershade…) you should see the mlsLayer* materials when searching for them._
 
-	_You should also see LayerStackPlugin.mll in your Plug-In Manager window under the devkit path._
+_You should also see LayerStackPlugin.mll in your Plug-In Manager window under the devkit path._
 
 Step 2: Load LayerStack Plugin through the plug-in manager.
 ----
