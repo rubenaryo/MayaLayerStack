@@ -21,16 +21,24 @@ Step 2: Load LayerStack Plugin through the plug-in manager.
 ----
 Open Maya’s plug-in manager and load the LayerStackPlugin.mll.
 
+![](images/pluginmanager.png "Plug-in Manager")
+
 Step 3: Create a material or load a preset
 ----
 Using the material designer on the right-hand side, either design your own material or load an included preset, such as CarbonFiber. We recommend having your presets folder next to your .mll application so that the preset view will be loaded automatically and any new presets should go in this folder.
 
+![](images/materialdesigner.png "Material Designer")
+
 Step 4: Apply the material
 ----
 Select a mesh/shape in Maya, then click the “select” button in the UI. Once the shape’s name shows up, press “Apply Material” and you should see it become a light-gray color. 
+
+![](images/applyMaterial.png "Apply Material")
 
 Step 5: Render with Arnold
 ----
 Render the scene with Arnold and you should see the result of your material.
 If building the scene from scratch, ensure you have Arnold-compatible lighting and surfaces in the scene.
 To quickly verify the material without having to build the scene, simply open the hypershade window, and change the renderer to “Arnold” to verify on the maya-included stock objects. 
+
+![](images/GoldDoor.png "Final Render")
